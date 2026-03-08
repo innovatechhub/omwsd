@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Source+Sans+3:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 42 45% 98%;
+    --foreground: 239 57% 21%;
+    --card: 0 0% 100%;
+    --card-foreground: 239 57% 21%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 239 57% 21%;
+    --primary: 241 60% 24%;
+    --primary-foreground: 48 100% 98%;
+    --secondary: 55 100% 60%;
+    --secondary-foreground: 239 57% 21%;
+    --muted: 48 45% 94%;
+    --muted-foreground: 239 16% 35%;
+    --accent: 357 94% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 357 82% 44%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 49 55% 82%;
+    --input: 49 55% 82%;
+    --ring: 357 94% 53%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at top left, rgba(249, 19, 31, 0.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(255, 230, 0, 0.18), transparent 32%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 222, 0.95));
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-3xl border bg-card/90 shadow-panel backdrop-blur;
+  }
+}

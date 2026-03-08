@@ -1,70 +1,70 @@
-# Getting Started with Create React App
+# OMSWD Pandan Assistance Request System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend foundation for a web-based assistance request and beneficiary management system for the Office of Municipal Social Welfare and Development (OMSWD) in Pandan, Antique.
 
-## Available Scripts
+## Stack
 
-In the project directory, you can run:
+- React 19
+- Vite 7
+- TypeScript
+- Tailwind CSS
+- shadcn/ui primitives
+- React Router
+- TanStack Query
+- Supabase client
 
-### `npm start`
+## Current Scope
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The project currently includes:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- public, admin, and resident layout shells
+- homepage and dashboard scaffolds
+- Supabase client and environment wiring
+- auth/session/profile provider foundation
+- reusable auth, profile, query, mutation, and storage service helpers
 
-### `npm test`
+Planned next modules include authentication screens, route guards, request forms, admin review tools, document uploads, and reporting.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Environment
 
-### `npm run build`
+Create a `.env` file with:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```env
+VITE_SUPABASE_URL=your-supabase-project-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+An example file is available at [`.env.example`](/d:/React%20Project/omswd/.env.example).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Scripts
 
-### `npm run eject`
+```bash
+npm run dev
+npm run typecheck
+npm run build
+npm run preview
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+On Windows PowerShell with script execution restrictions, use `npm.cmd` instead of `npm`.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Project Structure
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```text
+src/
+  app/
+  components/
+  features/
+  hooks/
+  integrations/supabase/
+  lib/
+  pages/
+  routes/
+  services/
+  types/
+  utils/
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Notes
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- If Supabase environment variables are missing, the app falls back to safe placeholder values and the auth layer remains disabled.
+- The profile service falls back to `user_metadata` until a `profiles` table is available in Supabase.
