@@ -151,6 +151,40 @@ async function uploadDocuments(
   }
 }
 
+async function seedApplicationRequirements(applicationId: string, assistanceTypeId: string) {
+  const { data: requirementTemplates, error: requirementTemplateError } = await supabase
+    .from("assistance_requirements")
+    .select("id")
+    .eq("assistance_type_id", assistanceTypeId);
+
+  if (requirementTemplateError) {
+    throw requirementTemplateError;
+  }
+
+  const requirementIds = ((requirementTemplates ?? []) as Array<Record<string, unknown>>)
+    .map((item) => (typeof item.id === "string" ? item.id : ""))
+    .filter(Boolean);
+
+  if (requirementIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.from("application_requirements").upsert(
+    requirementIds.map((requirementId) => ({
+      application_id: applicationId,
+      requirement_id: requirementId,
+      status: "pending",
+    })),
+    {
+      onConflict: "application_id,requirement_id",
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function createAssistanceRequest(
   values: AssistanceRequestFormValues,
 ): Promise<AssistanceRequestSubmissionResult> {
@@ -212,6 +246,7 @@ export async function createAssistanceRequest(
   }
 
   const applicationId = application.id as string;
+  await seedApplicationRequirements(applicationId, assistanceType.id);
 
   await uploadDocuments(user.id, referenceNumber, applicationId, values.governmentIdFiles, "ids");
   await uploadDocuments(

@@ -1,22 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  BellRing,
-  CheckCircle2,
-  CircleAlert,
-  Clock3,
-  FileWarning,
-  Info,
-  LoaderCircle,
-  MailCheck,
-} from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, BellRing, CircleAlert, Info, LoaderCircle, MailCheck } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
+import { ResidentPageHeader } from "@/components/resident/resident-page-header";
+import { ResidentStateCard } from "@/components/resident/resident-state-card";
+import { ResidentTableSkeleton } from "@/components/resident/resident-table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
 import { queryKeys } from "@/lib/query-keys";
@@ -45,6 +39,7 @@ export function NotificationsPage() {
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>("all");
   const [pendingNotificationId, setPendingNotificationId] = useState<string | null>(null);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [selectedNotificationId, setSelectedNotificationId] = useState<string>("");
   const application = portalQuery.data?.application ?? null;
   const notifications = portalQuery.data?.notifications ?? [];
   const unreadNotifications = portalQuery.data?.unreadNotifications ?? 0;
@@ -65,29 +60,24 @@ export function NotificationsPage() {
     }
   });
 
-  const summaryItems = [
-    {
-      label: "Unread updates",
-      value: String(unreadNotifications),
-      detail: unreadNotifications > 0 ? "New alerts waiting for review." : "You are caught up.",
-      icon: BellRing,
-    },
-    {
-      label: "Needs action",
-      value: String(needsActionCount),
-      detail:
-        needsActionCount > 0
-          ? "Review remarks or upload requested files."
-          : "No follow-up items are currently flagged.",
-      icon: CircleAlert,
-    },
-    {
-      label: "Latest status",
-      value: application?.statusLabel ?? "No application",
-      detail: application?.referenceNumber ?? "Submit a request to start tracking updates.",
-      icon: Info,
-    },
-  ];
+  useEffect(() => {
+    if (!selectedNotificationId && displayedNotifications[0]) {
+      setSelectedNotificationId(displayedNotifications[0].id);
+      return;
+    }
+
+    if (
+      selectedNotificationId &&
+      displayedNotifications.every((notification) => notification.id !== selectedNotificationId)
+    ) {
+      setSelectedNotificationId(displayedNotifications[0]?.id ?? "");
+    }
+  }, [displayedNotifications, selectedNotificationId]);
+
+  const selectedNotification =
+    displayedNotifications.find((notification) => notification.id === selectedNotificationId) ??
+    displayedNotifications[0] ??
+    null;
 
   async function refreshPortalData() {
     await queryClient.invalidateQueries({
@@ -123,264 +113,247 @@ export function NotificationsPage() {
   }
 
   if (portalQuery.isLoading) {
-    return <NotificationState message="Loading your resident notifications..." />;
+    return <NotificationsLoadingState />;
   }
 
   if (portalQuery.error instanceof Error) {
-    return <NotificationState message={portalQuery.error.message} />;
+    return <ResidentStateCard message={portalQuery.error.message} />;
   }
+
+  const summaryItems = [
+    {
+      label: "Unread updates",
+      value: String(unreadNotifications),
+      detail: unreadNotifications > 0 ? "New alerts waiting for review." : "You are caught up.",
+      icon: BellRing,
+    },
+    {
+      label: "Needs action",
+      value: String(needsActionCount),
+      detail:
+        needsActionCount > 0
+          ? "Review remarks or upload requested files."
+          : "No follow-up items are currently flagged.",
+      icon: CircleAlert,
+    },
+    {
+      label: "Latest status",
+      value: application?.statusLabel ?? "No application",
+      detail: application?.referenceNumber ?? "Submit a request to start tracking updates.",
+      icon: Info,
+    },
+  ];
+
+  const action = selectedNotification ? getNotificationAction(selectedNotification) : null;
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-primary/10 bg-[linear-gradient(135deg,rgba(20,17,94,1),rgba(35,33,120,0.94))] p-8 text-primary-foreground shadow-panel">
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-end">
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-foreground/72">
-                Notifications
-              </p>
-              <h1 className="font-serif text-4xl font-bold leading-tight md:text-5xl">
-                Resident alerts and updates
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-white/82 md:text-lg">
-                Review verification updates, requirement reminders, and case notices from
-                OMSWD in one place.
-              </p>
-            </div>
+      <ResidentPageHeader
+        eyebrow="Notifications"
+        title="Resident alerts and updates"
+        description="Review verification notices, requirement reminders, and case updates in one inbox."
+        chips={["Inbox Tracking", "Action Follow-up"]}
+      />
 
-            <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" asChild>
-                <Link to={needsActionCount > 0 ? "/resident/uploads" : "/resident/application"}>
-                  {needsActionCount > 0 ? "Open upload center" : "Open application"}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20"
-                onClick={() => void handleMarkAllRead()}
-                disabled={isMarkingAllRead || unreadNotifications === 0}
-              >
-                {isMarkingAllRead ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MailCheck className="h-4 w-4" />
-                )}
-                Mark all as read
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            {summaryItems.map(({ label, value, detail, icon: Icon }) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 backdrop-blur"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/12 text-secondary">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                      {label}
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-white">{value}</p>
-                    <p className="mt-1 text-sm leading-6 text-white/72">{detail}</p>
-                  </div>
-                </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        {summaryItems.map(({ label, value, detail, icon: Icon }) => (
+          <Card key={label} className="portal-card border-[var(--portal-outline)] shadow-none">
+            <CardContent className="flex gap-3 p-4">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--portal-surface-soft)]">
+                <Icon className="h-4 w-4 text-[var(--portal-accent)]" />
               </div>
-            ))}
-          </div>
-        </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
+                  {label}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-[var(--portal-ink)]">{value}</p>
+                <p className="mt-1 text-sm text-[var(--portal-muted)]">{detail}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
-        <Card className="border-primary/10 bg-white/95">
+      <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+        <CardHeader>
+          <CardTitle>Inbox controls</CardTitle>
+          <CardDescription>Filter your notifications and mark updates as reviewed.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setActiveFilter(option.key)}
+                className={[
+                  "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
+                  activeFilter === option.key
+                    ? "portal-nav-link-active"
+                    : "border-[var(--portal-outline)] bg-white text-[var(--portal-muted)] hover:bg-[var(--portal-surface-soft)] hover:text-[var(--portal-ink)]",
+                ].join(" ")}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+            onClick={() => void handleMarkAllRead()}
+            disabled={isMarkingAllRead || unreadNotifications === 0}
+          >
+            {isMarkingAllRead ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <MailCheck className="h-4 w-4" />
+            )}
+            Mark all as read
+          </Button>
+        </CardContent>
+      </Card>
+
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
           <CardHeader>
-            <CardTitle>Inbox controls</CardTitle>
-            <CardDescription>Filter alerts and open the next page you likely need.</CardDescription>
+            <CardTitle>Notification table</CardTitle>
+            <CardDescription>Select an item to read details and next action.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="flex flex-wrap gap-2">
-              {filterOptions.map((option) => (
-                <Button
-                  key={option.key}
-                  type="button"
-                  size="sm"
-                  variant={activeFilter === option.key ? "default" : "outline"}
-                  onClick={() => setActiveFilter(option.key)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-
-            <div className="rounded-3xl bg-muted/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                Current request
-              </p>
-              <p className="mt-2 text-xl font-semibold text-foreground">
-                {application?.referenceNumber ?? "No active reference"}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {application
-                  ? application.adminRemarks ??
-                    "Use your notifications and application page to monitor OMSWD review updates."
-                  : "Submit an assistance request first so OMSWD updates can appear in this inbox."}
-              </p>
-            </div>
-
-            <div className="grid gap-3">
-              <QuickLinkCard
-                to="/resident/application"
-                title="Application details"
-                description="Review status history, remarks, and uploaded document summaries."
-              />
-              <QuickLinkCard
-                to="/resident/uploads"
-                title="Requirement uploads"
-                description="Send corrected or requested files when OMSWD asks for follow-up."
-              />
-              <QuickLinkCard
-                to="/resident/profile"
-                title="Profile settings"
-                description="Keep contact and residency details updated for verification."
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <section className="grid gap-4">
-          {displayedNotifications.length > 0 ? (
-            displayedNotifications.map((notification) => {
-              const tone = getNotificationTone(notification.category);
-              const Icon =
-                tone === "warning" ? FileWarning : tone === "success" ? CheckCircle2 : Clock3;
-              const action = getNotificationAction(notification);
-              const needsAction = notificationNeedsAction(notification);
-
-              return (
-                <Card key={notification.id} className="border-primary/10 bg-white/95">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="flex gap-4">
-                        <div
-                          className={[
-                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
-                            tone === "warning"
-                              ? "bg-secondary text-primary"
-                              : tone === "success"
-                                ? "bg-accent text-accent-foreground"
-                                : "bg-primary text-primary-foreground",
-                          ].join(" ")}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant={notification.isRead ? "outline" : "default"}>
-                              {notification.categoryLabel}
-                            </Badge>
-                            <Badge variant={needsAction ? "secondary" : "outline"}>
-                              {needsAction ? "Needs action" : notification.isRead ? "Reviewed" : "Unread"}
-                            </Badge>
-                            <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                              {notification.createdAtLabel}
-                            </span>
-                          </div>
-                          <div>
-                            <h2 className="font-serif text-2xl font-bold leading-tight text-primary">
-                              {notification.title}
-                            </h2>
-                            <p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground">
-                              {notification.body}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="w-full rounded-2xl bg-muted/55 px-4 py-4 text-sm text-muted-foreground lg:max-w-sm">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                          Recommended step
-                        </p>
-                        <p className="mt-2 leading-6">{action.description}</p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {action.external ? (
-                            <Button asChild size="sm">
-                              <a href={action.to} target="_blank" rel="noreferrer">
-                                {action.label}
-                                <ArrowRight className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          ) : (
-                            <Button asChild size="sm">
-                              <Link to={action.to}>
-                                {action.label}
-                                <ArrowRight className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          )}
-
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[110px] text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayedNotifications.length > 0 ? (
+                  displayedNotifications.map((notification) => {
+                    const needsAction = notificationNeedsAction(notification);
+                    return (
+                      <TableRow
+                        key={notification.id}
+                        data-selected={selectedNotification?.id === notification.id}
+                        className="cursor-pointer data-[selected=true]:bg-[rgba(29,77,143,0.12)]"
+                        onClick={() => setSelectedNotificationId(notification.id)}
+                      >
+                        <TableCell className="font-medium">{notification.title}</TableCell>
+                        <TableCell>{notification.categoryLabel}</TableCell>
+                        <TableCell>{notification.createdAtLabel}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              needsAction ? "secondary" : notification.isRead ? "outline" : "default"
+                            }
+                            className={needsAction ? "bg-[rgba(242,193,79,0.22)] text-[var(--portal-ink)]" : undefined}
+                          >
+                            {needsAction ? "Needs action" : notification.isRead ? "Reviewed" : "Unread"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
                           {!notification.isRead ? (
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => void handleMarkAsRead(notification.id)}
+                              className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleMarkAsRead(notification.id);
+                              }}
                               disabled={pendingNotificationId === notification.id}
                             >
                               {pendingNotificationId === notification.id ? (
                                 <LoaderCircle className="h-4 w-4 animate-spin" />
                               ) : null}
-                              Mark as read
+                              Mark read
                             </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          ) : (
-            <Card className="border-primary/10 bg-white/95">
-              <CardContent className="p-8">
-                <div className="max-w-2xl space-y-3">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-                    {notifications.length === 0 ? "Inbox empty" : "No alerts in this filter"}
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Reviewed</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-10 text-center text-[var(--portal-muted)]">
+                      {notifications.length === 0
+                        ? "No notifications are stored for this account yet."
+                        : "No notifications match the current filter."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+          <CardHeader>
+            <CardTitle>Notification details</CardTitle>
+            <CardDescription>Read the selected notice and follow the recommended step.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedNotification && action ? (
+              <>
+                <div className="space-y-2 rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={selectedNotification.isRead ? "outline" : "default"}>
+                      {selectedNotification.categoryLabel}
+                    </Badge>
+                    <span className="text-xs text-[var(--portal-muted)]">
+                      {selectedNotification.createdAtLabel}
+                    </span>
+                  </div>
+                  <p className="text-lg font-semibold text-[var(--portal-ink)]">{selectedNotification.title}</p>
+                  <p className="text-sm text-[var(--portal-muted)]">{selectedNotification.body}</p>
+                </div>
+
+                <div className="rounded-lg border border-[var(--portal-outline)] bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
+                    Recommended step
                   </p>
-                  <h2 className="font-serif text-3xl font-bold text-primary">
-                    {notifications.length === 0
-                      ? "No notifications are stored for this resident account yet."
-                      : "No notifications match the current view."}
-                  </h2>
-                  <p className="text-sm leading-7 text-muted-foreground">
-                    {notifications.length === 0
-                      ? "Once OMSWD posts a status update, correction request, or reminder, it will appear here."
-                      : "Switch filters or return to the full inbox to review the rest of your updates."}
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <Button asChild>
-                      <Link to={application ? "/resident/application" : "/request-assistance"}>
-                        {application ? "Open application" : "Submit a request"}
-                      </Link>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setActiveFilter("all")}
-                    >
-                      View all updates
-                    </Button>
+                  <p className="mt-2 text-sm text-[var(--portal-muted)]">{action.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {action.external ? (
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+                      >
+                        <a href={action.to} target="_blank" rel="noreferrer">
+                          {action.label}
+                          <ArrowRight className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+                      >
+                        <Link to={action.to}>
+                          {action.label}
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </section>
+              </>
+            ) : (
+              <div className="portal-empty-state px-4 py-6 text-sm text-[var(--portal-muted)]">
+                Select a notification to review details.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
@@ -409,7 +382,7 @@ function getNotificationAction(notification: ResidentNotification) {
       label: "Open upload center",
       to: "/resident/uploads",
       external: false,
-      description: "Review remarks and upload any corrected or requested documents.",
+      description: "Review remarks and upload requested documents.",
     };
   }
 
@@ -418,7 +391,7 @@ function getNotificationAction(notification: ResidentNotification) {
       label: "Open profile",
       to: "/resident/profile",
       external: false,
-      description: "Check the resident profile record linked to your portal account.",
+      description: "Check the resident profile linked to your account.",
     };
   }
 
@@ -426,49 +399,51 @@ function getNotificationAction(notification: ResidentNotification) {
     label: "Open application",
     to: "/resident/application",
     external: false,
-    description: "Review your case history, remarks, and latest application status.",
+    description: "Review your case history, remarks, and current status.",
   };
 }
 
-function getNotificationTone(category: string) {
-  if (/(requirement|correction|warning)/i.test(category)) {
-    return "warning";
-  }
-
-  if (/(approved|success|completed)/i.test(category)) {
-    return "success";
-  }
-
-  return "info";
-}
-
-function QuickLinkCard({
-  to,
-  title,
-  description,
-}: {
-  to: string;
-  title: string;
-  description: string;
-}) {
+function NotificationsLoadingState() {
   return (
-    <Link
-      to={to}
-      className="flex items-start justify-between gap-4 rounded-2xl border border-primary/10 bg-white/90 px-4 py-4 transition-colors hover:bg-muted/35"
-    >
-      <div className="min-w-0">
-        <p className="font-semibold text-foreground">{title}</p>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-      </div>
-      <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-    </Link>
-  );
-}
-
-function NotificationState({ message }: { message: string }) {
-  return (
-    <Card className="border-primary/10 bg-white/95">
-      <CardContent className="p-8 text-sm text-muted-foreground">{message}</CardContent>
-    </Card>
+    <div className="space-y-6">
+      <ResidentPageHeader
+        eyebrow="Notifications"
+        title="Resident alerts and updates"
+        description="Loading your resident notifications..."
+        chips={["Inbox Tracking", "Action Follow-up"]}
+      />
+      <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+        <CardHeader>
+          <CardTitle>Inbox controls</CardTitle>
+          <CardDescription>Preparing filters and update actions.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-9 w-28 animate-pulse rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)]"
+              />
+            ))}
+          </div>
+          <div className="h-10 w-40 animate-pulse rounded-lg bg-[rgba(214,222,234,0.8)]" />
+        </CardContent>
+      </Card>
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <ResidentTableSkeleton title="Loading notification table" columns={5} rows={6} />
+        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+          <CardHeader>
+            <CardTitle>Notification details</CardTitle>
+            <CardDescription>Preparing selected notice details.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="h-4 w-2/3 animate-pulse rounded-full bg-[rgba(214,222,234,0.9)]" />
+            <div className="h-3 w-full animate-pulse rounded-full bg-[rgba(214,222,234,0.75)]" />
+            <div className="h-3 w-5/6 animate-pulse rounded-full bg-[rgba(214,222,234,0.75)]" />
+            <div className="h-9 w-36 animate-pulse rounded-lg bg-[rgba(214,222,234,0.85)]" />
+          </CardContent>
+        </Card>
+      </section>
+    </div>
   );
 }

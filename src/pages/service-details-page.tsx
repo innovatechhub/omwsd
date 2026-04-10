@@ -1,9 +1,27 @@
-import { BadgeCheck, FileText, ShieldCheck, Stethoscope } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  BookCheck,
+  FileText,
+  HandHelping,
+  School,
+  ShieldCheck,
+  Siren,
+  Stethoscope,
+  type LucideIcon,
+} from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServiceBySlug } from "@/features/public";
+
+const serviceIconBySlug: Record<string, LucideIcon> = {
+  "medical-assistance": Stethoscope,
+  "burial-assistance": Siren,
+  "food-relief": HandHelping,
+  "educational-assistance": School,
+};
 
 export function ServiceDetailsPage() {
   const { serviceSlug } = useParams();
@@ -13,75 +31,135 @@ export function ServiceDetailsPage() {
     return <Navigate to="/services" replace />;
   }
 
+  const ServiceIcon = serviceIconBySlug[service.slug] ?? HandHelping;
+
   return (
-    <div className="container space-y-10 py-14">
-      <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-5">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-            {service.category}
-          </p>
-          <h1 className="font-serif text-4xl font-bold md:text-5xl">{service.title}</h1>
-          <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-            {service.description}
-          </p>
-        </div>
+    <div className="landing-page pb-14 text-[var(--landing-ink)]">
+      <div className="container public-page-stack">
+        <section className="landing-card relative overflow-hidden p-6 md:p-8">
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,var(--landing-accent),var(--landing-highlight))]" />
 
-        <Card className="bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(235,245,255,0.88))]">
-          <CardHeader>
-            <CardTitle>Typical review pace</CardTitle>
-            <CardDescription>{service.turnaround}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button className="w-full" asChild>
-              <Link to="/request-assistance">Request this service</Link>
+          <div className="flex flex-wrap gap-2">
+            <span className="landing-chip px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
+              {service.category}
+            </span>
+            <span className="landing-chip px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
+              Service Details
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--landing-accent)] text-white">
+              <ServiceIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="public-hero-title">
+                {service.title}
+              </h1>
+              <p className="public-hero-lead mt-4 max-w-3xl">
+                {service.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              className="rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
+              asChild
+            >
+              <Link to="/request-assistance">
+                Request this service
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
-            <Button variant="outline" className="w-full" asChild>
-              <Link to="/requirements">View requirements guide</Link>
+            <Button
+              variant="outline"
+              className="rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]"
+              asChild
+            >
+              <Link to="/services">
+                <ArrowLeft className="h-4 w-4" />
+                Back to services
+              </Link>
             </Button>
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Common requirements</CardTitle>
-            <CardDescription>Prepare these before starting the request.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-            {service.requirements.map((item, index) => {
-              const icons = [FileText, Stethoscope, BadgeCheck, ShieldCheck];
-              const Icon = icons[index % icons.length];
+        <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <article className="landing-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
+              Common Requirements
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold">Prepare these before starting</h2>
 
-              return (
-                <div key={item} className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
-                    <Icon className="h-5 w-5" />
+            <div className="mt-5 space-y-3">
+              {service.requirements.map((item, index) => {
+                const icons = [FileText, BookCheck, BadgeCheck, ShieldCheck];
+                const Icon = icons[index % icons.length];
+
+                return (
+                  <div
+                    key={item}
+                    className="landing-soft-card flex items-start gap-3 px-3 py-3 text-sm text-[var(--landing-muted)]"
+                  >
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--landing-accent)] text-white">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <span>{item}</span>
                   </div>
-                  <span>{item}</span>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </div>
+          </article>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>How the process works</CardTitle>
-            <CardDescription>What usually happens after you submit.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
+          <article className="landing-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
+              Typical Review Pace
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold">{service.turnaround}</h2>
+            <p className="mt-2 text-sm leading-7 text-[var(--landing-muted)]">
+              Turnaround time varies depending on case completeness and verification findings.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              <Button
+                className="w-full rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
+                asChild
+              >
+                <Link to="/request-assistance">Request this service</Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]"
+                asChild
+              >
+                <Link to="/requirements">View requirements guide</Link>
+              </Button>
+            </div>
+          </article>
+        </section>
+
+        <section className="landing-card p-6 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
+            Process Flow
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold">How the process works</h2>
+          <p className="mt-2 text-sm leading-7 text-[var(--landing-muted)]">
+            What usually happens after you submit this assistance request.
+          </p>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
             {service.process.map((item, index) => (
-              <div key={item} className="flex gap-4 rounded-2xl bg-muted/60 px-4 py-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              <div key={item} className="landing-soft-card flex gap-3 px-4 py-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--landing-accent)] text-xs font-semibold text-white">
                   {index + 1}
                 </div>
-                <p>{item}</p>
+                <p className="text-sm leading-7 text-[var(--landing-muted)]">{item}</p>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -11,8 +11,8 @@ const governmentNotes = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-white/10 bg-primary text-primary-foreground">
-      <div className="container grid gap-10 py-10 lg:grid-cols-[1.2fr_0.8fr]">
+    <footer className="mt-[var(--landing-space-section)] border-t border-white/10 bg-primary text-primary-foreground">
+      <div className="container grid gap-8 py-8 md:py-10 lg:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-5">
           <div className="flex items-center gap-5">
             <BrandMark size="lg" />
@@ -31,11 +31,11 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 shadow-panel backdrop-blur">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary-foreground/72">
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/10 p-5 shadow-panel backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/72">
               Government service notice
             </p>
-            <p className="mt-3 text-sm leading-7 text-primary-foreground/82">
+            <p className="mt-3 text-sm leading-7 text-primary-foreground/82 md:text-[0.95rem]">
               This platform is intended to guide residents through assistance intake,
               verification, document follow-up, and resident portal tracking in a more
               structured and transparent way.
@@ -45,10 +45,10 @@ export function SiteFooter() {
 
         <section className="space-y-5">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary-foreground/72">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/72">
               Service Standards
             </p>
-            <p className="mt-2 text-sm text-primary-foreground/78">
+            <p className="mt-2 text-sm leading-7 text-primary-foreground/78">
               Core platform commitments reflected across the public site and protected
               modules.
             </p>
@@ -57,7 +57,7 @@ export function SiteFooter() {
             {governmentNotes.map((note) => (
               <div
                 key={note}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-primary-foreground/82"
+                className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-primary-foreground/82"
               >
                 <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
                   <ShieldCheck className="h-4 w-4" />
@@ -70,7 +70,7 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-white/10 bg-primary/95">
-        <div className="container flex flex-col gap-3 py-4 text-sm text-primary-foreground/74 md:flex-row md:items-center md:justify-between">
+        <div className="container flex flex-col gap-2 py-4 text-xs text-primary-foreground/74 md:flex-row md:items-center md:justify-between md:text-sm">
           <p>Copyright 2026 Office of Municipal Social Welfare and Development, Pandan, Antique.</p>
           <p>
             Public portal, resident portal, and administrative workspace for municipal

@@ -20,6 +20,7 @@ import { PrivacyPolicyPage } from "@/pages/privacy-policy-page";
 import { ProfilePage } from "@/pages/profile-page";
 import { RequestAssistancePage } from "@/pages/request-assistance-page";
 import { RegisterPage } from "@/pages/register-page";
+import { ResidentSettingsPage } from "@/pages/resident-settings-page";
 import { ReportsPage } from "@/pages/reports-page";
 import { RequirementsPage } from "@/pages/requirements-page";
 import { ResidentApplicationPage } from "@/pages/resident-application-page";
@@ -114,6 +115,10 @@ const router = createBrowserRouter([
               {
                 path: "profile",
                 element: <ProfilePage />,
+              },
+              {
+                path: "settings",
+                element: <ResidentSettingsPage />,
               },
             ],
           },

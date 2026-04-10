@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { ResidentPageHeader } from "@/components/resident/resident-page-header";
+import { ResidentStateCard } from "@/components/resident/resident-state-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,20 +25,20 @@ const progressSteps = [
 
 const quickActions = [
   {
-    title: "View application",
-    description: "Review your submitted request and current case details.",
+    title: "Application details",
+    description: "Review your latest request and case remarks.",
     to: "/resident/application",
     icon: FileCheck2,
   },
   {
-    title: "Upload requirements",
-    description: "Send additional files if OMSWD requests follow-up documents.",
+    title: "Requirement uploads",
+    description: "Submit requested or corrected documents.",
     to: "/resident/uploads",
     icon: Upload,
   },
   {
-    title: "Check notifications",
-    description: "Read reminders, corrections, and verification updates.",
+    title: "Notifications",
+    description: "Check reminders and status updates from OMSWD.",
     to: "/resident/notifications",
     icon: BellRing,
   },
@@ -49,11 +51,11 @@ export function ResidentDashboardPage() {
   const needsActionCount = portalQuery.data?.needsActionCount ?? 0;
 
   if (portalQuery.isLoading) {
-    return <ResidentDashboardState message="Loading your resident portal data..." />;
+    return <ResidentStateCard message="Loading your resident portal data..." />;
   }
 
   if (portalQuery.error instanceof Error) {
-    return <ResidentDashboardState message={portalQuery.error.message} />;
+    return <ResidentStateCard message={portalQuery.error.message} />;
   }
 
   const summaryCards = [
@@ -61,16 +63,16 @@ export function ResidentDashboardPage() {
       label: "Current status",
       value: application?.statusLabel ?? "No application yet",
       detail: application
-        ? "This reflects the latest case status from Supabase."
-        : "Submit a request first to begin tracking your case.",
+        ? "This reflects the latest case status."
+        : "Submit a request first to begin tracking.",
       icon: Clock3,
     },
     {
       label: "Reference number",
       value: application?.referenceNumber ?? "Not available",
       detail: application
-        ? "Use this when asking OMSWD for updates."
-        : "A reference number is assigned after submission.",
+        ? "Use this when contacting OMSWD."
+        : "Assigned after application submission.",
       icon: FileCheck2,
     },
     {
@@ -81,89 +83,81 @@ export function ResidentDashboardPage() {
           : "No action needed",
       detail:
         needsActionCount > 0
-          ? "Check your notifications and upload any requested files."
-          : "No follow-up is currently required from you.",
+          ? "Review notifications and upload requested files."
+          : "No follow-up is currently required.",
       icon: needsActionCount > 0 ? FileWarning : CheckCircle2,
     },
   ];
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-primary/10 bg-[linear-gradient(135deg,rgba(20,17,94,1),rgba(35,33,120,0.94))] p-8 text-primary-foreground shadow-panel">
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-foreground/72">
-              Resident Dashboard
-            </p>
-            <h1 className="font-serif text-4xl font-bold leading-tight md:text-5xl">
-              Track your assistance request easily.
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-white/82 md:text-lg">
-              View your latest status, open your request details, and check if any follow-up
-              action is needed.
-            </p>
-          </div>
+      <ResidentPageHeader
+        eyebrow="Dashboard"
+        title="Resident overview"
+        description="Track your request status and open the next step quickly."
+        chips={["Status Tracking", "Resident Follow-up"]}
+      />
 
+      <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+        <CardHeader>
+          <CardTitle>Current application</CardTitle>
+          <CardDescription>Latest request details linked to this account.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {application ? (
-            <div className="flex flex-wrap items-center gap-3 text-sm text-white/88">
-              <Badge className="bg-white text-primary" variant="outline">
-                {application.assistanceName}
-              </Badge>
-              <span>{application.referenceNumber}</span>
-              <span>{application.submittedAtLabel}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{application.assistanceName}</Badge>
+              <Badge variant="outline">{application.referenceNumber}</Badge>
+              <Badge variant="outline">{application.submittedAtLabel}</Badge>
             </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" size="lg" asChild>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No request is currently linked to this account.
+            </p>
+          )}
+            <div className="flex flex-wrap gap-2">
+            <Button className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]" asChild>
               <Link to="/resident/application">
                 {application ? "View application" : "Open application page"}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white/20 bg-white/10 text-white hover:bg-white/20"
-              asChild
-            >
+            <Button variant="outline" className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]" asChild>
               <Link to={application ? "/resident/uploads" : "/request-assistance"}>
                 {application ? "Upload documents" : "Submit a request"}
                 <Upload className="h-4 w-4" />
               </Link>
             </Button>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-4 md:grid-cols-3">
         {summaryCards.map(({ label, value, detail, icon: Icon }) => (
-          <Card key={label} className="border-primary/10 bg-white/95">
-            <CardContent className="flex gap-4 p-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
-                <Icon className="h-5 w-5" />
+          <Card key={label} className="portal-card border-[var(--portal-outline)] shadow-none">
+            <CardContent className="flex gap-3 p-4">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--portal-surface-soft)]">
+                <Icon className="h-4 w-4 text-[var(--portal-accent)]" />
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
                   {label}
                 </p>
-                <p className="mt-1 text-xl font-semibold leading-tight text-foreground">
-                  {value}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>
+                <p className="mt-1 text-lg font-semibold leading-tight text-[var(--portal-ink)]">{value}</p>
+                <p className="mt-1 text-sm text-[var(--portal-muted)]">{detail}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card className="border-primary/10">
+      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
           <CardHeader>
-            <CardTitle>Progress</CardTitle>
-            <CardDescription>Simple overview of where your request is now.</CardDescription>
+            <CardTitle>Progress tracker</CardTitle>
+            <CardDescription>Where your request currently is in the process.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             {application ? (
               progressSteps.map((step, index) => {
                 const isComplete = index < application.progressStep;
@@ -173,25 +167,27 @@ export function ResidentDashboardPage() {
                   <div
                     key={step}
                     className={[
-                      "flex items-center gap-4 rounded-2xl px-4 py-4",
-                      isCurrent ? "bg-secondary/45" : "bg-muted/50",
+                      "flex items-center gap-3 rounded-lg border px-3 py-3",
+                      isCurrent
+                        ? "border-[var(--portal-accent)] bg-[rgba(29,77,143,0.08)]"
+                        : "border-[var(--portal-outline)] bg-[var(--portal-surface-soft)]",
                     ].join(" ")}
                   >
                     <div
                       className={[
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
                         isComplete
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-[var(--portal-accent)] text-white"
                           : isCurrent
-                            ? "bg-white text-primary"
-                            : "bg-white text-muted-foreground",
+                            ? "bg-[rgba(29,77,143,0.14)] text-[var(--portal-accent)]"
+                            : "bg-white text-[var(--portal-muted)]",
                       ].join(" ")}
                     >
-                      {isComplete ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
+                      {isComplete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{step}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-medium text-[var(--portal-ink)]">{step}</p>
+                      <p className="text-xs text-[var(--portal-muted)]">
                         {isComplete ? "Completed" : isCurrent ? "Current step" : "Upcoming"}
                       </p>
                     </div>
@@ -199,59 +195,47 @@ export function ResidentDashboardPage() {
                 );
               })
             ) : (
-              <div className="rounded-3xl border border-primary/10 bg-muted/35 px-5 py-6 text-sm text-muted-foreground">
-                No request is linked to this resident account yet. Submit an assistance
-                request first so the portal can track it here.
+              <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+                Submit a request first so the portal can start tracking progress.
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-primary/10">
+        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
           <CardHeader>
             <CardTitle>Quick navigation</CardTitle>
-            <CardDescription>Open the most important resident pages faster.</CardDescription>
+            <CardDescription>Open commonly used resident pages faster.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
+          <CardContent className="space-y-3">
             {quickActions.map(({ title, description, to, icon: Icon }) => (
               <Link
                 key={title}
                 to={to}
-                className="flex items-start gap-4 rounded-2xl border border-primary/10 bg-white/90 px-4 py-4 transition-colors hover:bg-muted/40"
+                className="flex items-start justify-between gap-3 rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-3 transition-colors hover:bg-[var(--portal-surface-soft)]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-                  <Icon className="h-5 w-5" />
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-[var(--portal-surface-soft)]">
+                    <Icon className="h-4 w-4 text-[var(--portal-accent)]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[var(--portal-ink)]">{title}</p>
+                    <p className="mt-1 text-xs text-[var(--portal-muted)]">{description}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-foreground">{title}</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {description}
-                  </p>
-                </div>
-                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                <ArrowRight className="h-4 w-4 shrink-0 text-[var(--portal-muted)]" />
               </Link>
             ))}
 
-            <div className="rounded-2xl border border-primary/10 bg-secondary/35 px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                Notifications
+            <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
+                Unread notifications
               </p>
-              <p className="mt-2 text-2xl font-bold text-foreground">{unreadNotifications}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Unread updates waiting in your resident inbox.
-              </p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--portal-ink)]">{unreadNotifications}</p>
             </div>
           </CardContent>
         </Card>
       </section>
     </div>
-  );
-}
-
-function ResidentDashboardState({ message }: { message: string }) {
-  return (
-    <Card className="border-primary/10">
-      <CardContent className="p-8 text-sm text-muted-foreground">{message}</CardContent>
-    </Card>
   );
 }

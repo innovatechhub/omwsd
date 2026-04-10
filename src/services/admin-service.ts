@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
 import type {
+  AdminApplicationCaseDetails,
+  AdminCaseDocumentRecord,
+  AdminCaseRequirementRecord,
   AdminApplicationRecord,
   AdminBarangayMetric,
   AdminDashboardMetrics,
@@ -26,6 +29,133 @@ function formatDate(value: string | null) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatTokenLabel(value: string | null | undefined) {
+  if (!value) {
+    return "Not specified";
+  }
+
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatCaseStatusLabel(status: string | null | undefined) {
+  if (!status) {
+    return "Not specified";
+  }
+
+  switch (status) {
+    case "for_requirements":
+      return "Requirements needed";
+    case "pending_verification":
+      return "Pending verification";
+    case "under_review":
+      return "Under review";
+    case "for_correction":
+      return "For correction";
+    case "needs_resubmission":
+      return "Needs resubmission";
+    default:
+      return formatTokenLabel(status);
+  }
+}
+
+function mapCaseDocument(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? ""),
+    applicationRequirementId:
+      typeof row.application_requirement_id === "string" ? row.application_requirement_id : null,
+    bucket: String(row.bucket ?? ""),
+    filePath: String(row.file_path ?? ""),
+    fileName: String(row.file_name ?? "Uploaded file"),
+    status: typeof row.status === "string" ? row.status : "uploaded",
+    statusLabel: formatCaseStatusLabel(typeof row.status === "string" ? row.status : "uploaded"),
+    remarks: typeof row.remarks === "string" ? row.remarks : null,
+    createdAt: typeof row.created_at === "string" ? row.created_at : "",
+    createdAtLabel: formatDate(typeof row.created_at === "string" ? row.created_at : null),
+  } satisfies AdminCaseDocumentRecord;
+}
+
+function mapCaseRequirement(
+  row: Record<string, unknown>,
+  documents: AdminCaseDocumentRecord[],
+) {
+  const requirement = row.assistance_requirements as Record<string, unknown> | null;
+  const requirementRecordId = String(row.id ?? "");
+
+  return {
+    id: requirementRecordId,
+    requirementId: String(row.requirement_id ?? ""),
+    name: String(requirement?.name ?? "Requirement"),
+    description: typeof requirement?.description === "string" ? requirement.description : null,
+    sortOrder:
+      typeof requirement?.sort_order === "number"
+        ? requirement.sort_order
+        : typeof requirement?.sort_order === "string"
+          ? Number(requirement.sort_order)
+          : 0,
+    status: typeof row.status === "string" ? row.status : "pending",
+    statusLabel: formatCaseStatusLabel(typeof row.status === "string" ? row.status : "pending"),
+    remarks: typeof row.remarks === "string" ? row.remarks : null,
+    reviewedAt: typeof row.reviewed_at === "string" ? row.reviewed_at : null,
+    reviewedAtLabel: formatDate(typeof row.reviewed_at === "string" ? row.reviewed_at : null),
+    documents: documents.filter((document) => document.applicationRequirementId === requirementRecordId),
+  } satisfies AdminCaseRequirementRecord;
+}
+
+async function seedMissingApplicationRequirements(applicationId: string) {
+  const { data: applicationRow, error: applicationError } = await supabase
+    .from("applications")
+    .select("assistance_type_id")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (applicationError) {
+    throw applicationError;
+  }
+
+  const assistanceTypeId =
+    applicationRow && typeof applicationRow.assistance_type_id === "string"
+      ? applicationRow.assistance_type_id
+      : null;
+
+  if (!assistanceTypeId) {
+    return;
+  }
+
+  const { data: requirementTemplates, error: requirementTemplateError } = await supabase
+    .from("assistance_requirements")
+    .select("id")
+    .eq("assistance_type_id", assistanceTypeId);
+
+  if (requirementTemplateError) {
+    throw requirementTemplateError;
+  }
+
+  const requirementIds = ((requirementTemplates ?? []) as Array<Record<string, unknown>>)
+    .map((item) => (typeof item.id === "string" ? item.id : ""))
+    .filter(Boolean);
+
+  if (requirementIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.from("application_requirements").upsert(
+    requirementIds.map((requirementId) => ({
+      application_id: applicationId,
+      requirement_id: requirementId,
+      status: "pending",
+    })),
+    {
+      onConflict: "application_id,requirement_id",
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
 }
 
 function mapStatus(status: string | null): AdminApplicationRecord["status"] {
@@ -162,6 +292,90 @@ export async function saveAdminApplicationRemarks(applicationId: string, remarks
   if (error) {
     throw error;
   }
+}
+
+export async function getAdminApplicationCaseDetails(
+  applicationId: string,
+): Promise<AdminApplicationCaseDetails> {
+  assertSupabaseConfigured();
+
+  let requirementRows: Record<string, unknown>[] = [];
+  const [{ data: initialRequirementRows, error: requirementError }, { data: documentRows, error: documentError }] =
+    await Promise.all([
+    supabase
+      .from("application_requirements")
+      .select(
+        "id, requirement_id, status, remarks, reviewed_at, assistance_requirements(name, description, sort_order)",
+      )
+      .eq("application_id", applicationId),
+    supabase
+      .from("uploaded_documents")
+      .select("id, application_requirement_id, bucket, file_path, file_name, status, remarks, created_at")
+      .eq("application_id", applicationId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (requirementError) {
+    throw requirementError;
+  }
+
+  if (documentError) {
+    throw documentError;
+  }
+
+  requirementRows = (initialRequirementRows ?? []) as Array<Record<string, unknown>>;
+
+  if (requirementRows.length === 0) {
+    await seedMissingApplicationRequirements(applicationId);
+
+    const { data: refreshedRequirementRows, error: refreshRequirementError } = await supabase
+      .from("application_requirements")
+      .select(
+        "id, requirement_id, status, remarks, reviewed_at, assistance_requirements(name, description, sort_order)",
+      )
+      .eq("application_id", applicationId);
+
+    if (refreshRequirementError) {
+      throw refreshRequirementError;
+    }
+
+    requirementRows = (refreshedRequirementRows ?? []) as Array<Record<string, unknown>>;
+  }
+
+  const documents = ((documentRows ?? []) as Array<Record<string, unknown>>).map(mapCaseDocument);
+  let requirements = requirementRows
+    .map((row) => mapCaseRequirement(row, documents))
+    .sort((left, right) => {
+      if (left.sortOrder !== right.sortOrder) {
+        return left.sortOrder - right.sortOrder;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+
+  if (requirements.length === 0 && documents.length > 0) {
+    requirements = [
+      {
+        id: "general-supporting-documents",
+        requirementId: "",
+        name: "General supporting documents",
+        description:
+          "No requirement template is configured for this service yet. Uploaded files are listed here.",
+        sortOrder: 0,
+        status: "submitted",
+        statusLabel: "Submitted",
+        remarks: null,
+        reviewedAt: null,
+        reviewedAtLabel: "Not recorded",
+        documents,
+      },
+    ];
+  }
+
+  return {
+    requirements,
+    documents,
+  };
 }
 
 export async function getAdminResidents() {

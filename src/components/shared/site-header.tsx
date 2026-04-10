@@ -32,27 +32,31 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/20 bg-primary/95 text-primary-foreground backdrop-blur">
-      <div className="container flex h-20 items-center justify-between gap-6">
-        <NavLink to="/" className="flex items-center gap-3">
+    <header className="sticky top-0 z-40 border-b border-[color:var(--landing-outline)] bg-[rgba(255,253,247,0.95)] text-[color:var(--landing-ink)] backdrop-blur">
+      <div className="container flex h-[var(--public-header-height)] items-center justify-between gap-4 md:gap-6">
+        <NavLink to="/" className="flex min-w-0 items-center gap-3">
           <BrandMark size="sm" />
-          <div>
-            <p className="font-serif text-lg font-bold leading-none">OMSWD Pandan</p>
-            <p className="text-sm text-primary-foreground/80">
+          <div className="min-w-0">
+            <p className="truncate font-serif text-lg font-bold leading-none md:text-[1.42rem]">
+              OMSWD Pandan
+            </p>
+            <p className="truncate text-xs text-[color:var(--landing-muted)] md:text-sm">
               Assistance Request System
             </p>
           </div>
         </NavLink>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-5 lg:flex">
           {navigation.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 [
-                  "text-sm font-semibold transition-opacity hover:opacity-100",
-                  isActive ? "opacity-100" : "opacity-75",
+                  "text-[0.95rem] font-semibold tracking-[0.01em] transition-colors",
+                  isActive
+                    ? "text-[color:var(--landing-ink)]"
+                    : "text-[color:var(--landing-muted)] hover:text-[color:var(--landing-ink)]",
                 ].join(" ")
               }
             >
@@ -61,15 +65,21 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
-              <Button variant="secondary" asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-xl px-4 text-[color:var(--landing-ink)]"
+                asChild
+              >
                 <NavLink to={getDefaultRouteForAuthenticatedUser(role)}>Open dashboard</NavLink>
               </Button>
               <Button
                 variant="outline"
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+                size="sm"
+                className="rounded-xl border-[color:var(--landing-outline)] bg-white/80 text-[color:var(--landing-ink)] hover:bg-white"
                 onClick={handleSignOut}
               >
                 <LogOut className="h-4 w-4" />
@@ -78,12 +88,18 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Button variant="secondary" asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-xl px-4 text-[color:var(--landing-ink)]"
+                asChild
+              >
                 <NavLink to="/request-assistance">Request assistance</NavLink>
               </Button>
               <Button
                 variant="outline"
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+                size="sm"
+                className="rounded-xl border-[color:var(--landing-outline)] bg-white/80 text-[color:var(--landing-ink)] hover:bg-white"
                 asChild
               >
                 <NavLink to="/login">Sign in</NavLink>
@@ -95,7 +111,7 @@ export function SiteHeader() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-white hover:bg-white/10 md:hidden"
+          className="rounded-xl text-[color:var(--landing-ink)] hover:bg-[color:var(--landing-outline)]/40 md:hidden"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />

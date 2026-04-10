@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, Download, MapPinned } from "lucide-react";
+import { BarChart3, Clock3, Download, MapPinned, TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
@@ -65,15 +65,28 @@ export function ReportsPage() {
     return { totalApplications, averagePerMonth, peak };
   }, [filteredSeries]);
   const topBarangays = reportsQuery.data?.barangays ?? [];
+  const totalTopBarangayVolume = useMemo(
+    () => topBarangays.reduce((sum, barangay) => sum + barangay.applications, 0),
+    [topBarangays],
+  );
   const metrics = reportsQuery.data?.metrics;
+  const latestMonth = filteredSeries[filteredSeries.length - 1]?.applications ?? 0;
+  const previousMonth =
+    filteredSeries.length > 1 ? filteredSeries[filteredSeries.length - 2]?.applications ?? 0 : 0;
+  const monthOverMonth = latestMonth - previousMonth;
+  const pendingRatio = metrics?.totalApplications
+    ? Math.round(((metrics.pendingVerification ?? 0) / metrics.totalApplications) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-primary/72">Reports</p>
-          <h1 className="mt-2 font-serif text-4xl font-bold">Live admin reporting</h1>
-          <p className="mt-3 max-w-3xl text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Reports
+          </p>
+          <h1 className="text-3xl font-semibold">Live admin reporting</h1>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
             Track application volume, identify high-demand barangays, and export a clean
             CSV summary for OMSWD reporting.
           </p>
@@ -126,10 +139,34 @@ export function ReportsPage() {
         />
       </section>
 
+      <section className="grid gap-4 lg:grid-cols-3">
+        <SignalCard
+          title="Month-over-month"
+          value={monthOverMonth === 0 ? "No change" : `${monthOverMonth > 0 ? "+" : ""}${monthOverMonth}`}
+          tone={monthOverMonth > 0 ? "up" : monthOverMonth < 0 ? "down" : "neutral"}
+          detail={`Compared latest month (${latestMonth}) with previous month (${previousMonth})`}
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+        <SignalCard
+          title="Review pressure"
+          value={`${pendingRatio}%`}
+          tone={pendingRatio >= 40 ? "down" : "neutral"}
+          detail="Share of all applications still pending verification"
+          icon={<Clock3 className="h-4 w-4" />}
+        />
+        <SignalCard
+          title="Reporting window"
+          value={`${period} months`}
+          tone="neutral"
+          detail={`Showing ${filteredSeries.length} month data points for trend analysis`}
+          icon={<BarChart3 className="h-4 w-4" />}
+        />
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <Card>
           <CardHeader>
-            <CardTitle className="font-sans text-2xl">Monthly application volume</CardTitle>
+            <CardTitle>Monthly application volume</CardTitle>
             <CardDescription>
               Last {period} months of submitted assistance requests
             </CardDescription>
@@ -174,9 +211,9 @@ export function ReportsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-sans text-2xl">Barangay demand snapshot</CardTitle>
+            <CardTitle>Barangay demand snapshot</CardTitle>
             <CardDescription>
-              Highest request volume based on current application records
+              Highest request volume based on current application records.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -189,23 +226,42 @@ export function ReportsPage() {
                 Unable to load barangay reporting right now.
               </div>
             ) : topBarangays.length > 0 ? (
-              topBarangays.map((barangay, index) => (
-                <div
-                  key={barangay.name}
-                  className="flex items-center justify-between rounded-3xl border border-primary/10 bg-muted/35 px-4 py-4"
-                >
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary/72">
-                      Rank {index + 1}
-                    </p>
-                    <p className="mt-1 text-lg font-semibold">{barangay.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">{barangay.applications}</p>
-                    <p className="text-sm text-muted-foreground">applications</p>
-                  </div>
+              <div className="space-y-3">
+                {topBarangays.map((barangay, index) => {
+                  const share = totalTopBarangayVolume > 0
+                    ? Math.round((barangay.applications / totalTopBarangayVolume) * 100)
+                    : 0;
+
+                  return (
+                    <div key={barangay.name} className="rounded-xl border bg-card p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            Rank {index + 1}
+                          </p>
+                          <p className="mt-1 truncate text-base font-semibold">{barangay.name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-primary">{barangay.applications}</p>
+                          <p className="text-xs text-muted-foreground">applications</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-muted">
+                        <div
+                          className="h-2 rounded-full bg-primary transition-all"
+                          style={{ width: `${Math.max(share, 4)}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs font-medium text-muted-foreground">
+                        {share}% share of visible top-barangay volume
+                      </p>
+                    </div>
+                  );
+                })}
+                <div className="rounded-xl border border-dashed bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
+                  Snapshot is based on current application records and updates automatically.
                 </div>
-              ))
+              </div>
             ) : (
               <div className="rounded-3xl border border-primary/10 bg-muted/35 px-4 py-5 text-sm text-muted-foreground">
                 Barangay reporting will appear once applications are recorded.
@@ -240,6 +296,44 @@ function MetricCard({
             {title}
           </p>
           <p className="mt-1 text-3xl font-bold">{value}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SignalCard({
+  title,
+  value,
+  detail,
+  icon,
+  tone,
+}: {
+  title: string;
+  value: string;
+  detail: string;
+  icon: ReactNode;
+  tone: "up" | "down" | "neutral";
+}) {
+  const toneClass =
+    tone === "up"
+      ? "border-emerald-300/40 bg-emerald-500/5"
+      : tone === "down"
+        ? "border-amber-300/40 bg-amber-500/5"
+        : "border-border bg-muted/20";
+
+  return (
+    <Card className={toneClass}>
+      <CardContent className="flex items-start gap-3 p-4">
+        <div className="mt-0.5 rounded-lg border border-border bg-background p-2 text-primary">
+          {icon}
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {title}
+          </p>
+          <p className="mt-1 text-xl font-semibold">{value}</p>
           <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
         </div>
       </CardContent>

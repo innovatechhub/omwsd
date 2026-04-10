@@ -10,6 +10,38 @@ export interface AdminApplicationRecord {
   remarks: string;
 }
 
+export interface AdminCaseDocumentRecord {
+  id: string;
+  applicationRequirementId: string | null;
+  bucket: string;
+  filePath: string;
+  fileName: string;
+  status: string;
+  statusLabel: string;
+  remarks: string | null;
+  createdAt: string;
+  createdAtLabel: string;
+}
+
+export interface AdminCaseRequirementRecord {
+  id: string;
+  requirementId: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  status: string;
+  statusLabel: string;
+  remarks: string | null;
+  reviewedAt: string | null;
+  reviewedAtLabel: string | null;
+  documents: AdminCaseDocumentRecord[];
+}
+
+export interface AdminApplicationCaseDetails {
+  requirements: AdminCaseRequirementRecord[];
+  documents: AdminCaseDocumentRecord[];
+}
+
 export interface AdminResidentRecord {
   id: string;
   profileId: string;

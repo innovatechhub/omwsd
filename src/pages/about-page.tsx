@@ -1,7 +1,8 @@
-import { Building2, HeartHandshake, ShieldCheck } from "lucide-react";
+import { ArrowRight, Building2, HeartHandshake, ShieldCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const pillars = [
   {
@@ -19,57 +20,73 @@ const pillars = [
   {
     title: "Operational visibility",
     description:
-      "The system is being shaped to support dashboards, reports, and an auditable application workflow for the office.",
+      "The system is shaped to support dashboards, reports, and an auditable application workflow for the office.",
     icon: Building2,
   },
 ];
 
 export function AboutPage() {
   return (
-    <div className="container space-y-12 py-14">
-      <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-        <div className="space-y-5">
-          <Badge>About OMSWD</Badge>
-          <h1 className="font-serif text-4xl font-bold md:text-5xl">
+    <div className="landing-page pb-14 text-[var(--landing-ink)]">
+      <div className="container public-page-stack">
+        <section className="landing-card relative overflow-hidden p-6 md:p-8">
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,var(--landing-accent),var(--landing-highlight))]" />
+          <Badge className="landing-chip border-0 px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.18em]">
+            About OMSWD
+          </Badge>
+          <h1 className="public-hero-title mt-4 max-w-4xl">
             A more usable digital front door for social welfare services.
           </h1>
-          <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-            The OMSWD Pandan portal is being built as a single system for public
-            information, assistance request intake, verification, and resident tracking.
-            Its goal is to reduce fragmented communication and give both residents and
-            staff a clearer process from submission to resolution.
+          <p className="public-hero-lead mt-4 max-w-3xl">
+            The OMSWD Pandan portal is built as a single system for public information,
+            assistance request intake, verification, and resident tracking. Its goal is to reduce
+            fragmented communication and give both residents and staff a clearer process from
+            submission to resolution.
           </p>
-        </div>
+        </section>
 
-        <Card className="bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(235,245,255,0.88))]">
-          <CardHeader>
-            <CardTitle>What this platform is for</CardTitle>
-            <CardDescription>
-              Public website content, structured intake, protected staff workflows, and
-              resident-side updates are being brought into one modular application.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-            <p>Residents can understand services before starting a request.</p>
-            <p>Staff can process verified cases through protected administrative routes.</p>
-            <p>Residents can return later to track application status and document requests.</p>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-6 md:grid-cols-3">
-        {pillars.map(({ title, description, icon: Icon }) => (
-          <Card key={title}>
-            <CardHeader>
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
+        <section className="grid gap-5 md:grid-cols-3">
+          {pillars.map(({ title, description, icon: Icon }) => (
+            <article key={title} className="landing-card p-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--landing-accent)] text-white">
                 <Icon className="h-6 w-6" />
               </div>
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>{description}</CardDescription>
-            </CardHeader>
-          </Card>
-        ))}
-      </section>
+              <h2 className="mt-4 text-xl font-semibold">{title}</h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--landing-muted)]">{description}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="landing-card grid gap-5 p-6 md:grid-cols-[1.1fr_0.9fr] md:items-center md:p-7">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
+              What this platform is for
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[var(--landing-muted)] md:text-base">
+              Public website content, structured intake, protected staff workflows, and
+              resident-side updates are brought into one modular application.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 md:justify-end">
+            <Button
+              className="rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
+              asChild
+            >
+              <Link to="/services">
+                View services
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]"
+              asChild
+            >
+              <Link to="/contact">Contact OMSWD</Link>
+            </Button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -355,6 +355,44 @@ set
   estimated_processing_days = excluded.estimated_processing_days,
   is_active = excluded.is_active;
 
+create or replace function public.seed_application_requirements()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.application_requirements (application_id, requirement_id, status)
+  select
+    new.id,
+    ar.id,
+    'pending'
+  from public.assistance_requirements ar
+  where ar.assistance_type_id = new.assistance_type_id
+  on conflict (application_id, requirement_id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists seed_application_requirements_on_insert on public.applications;
+create trigger seed_application_requirements_on_insert
+after insert on public.applications
+for each row
+execute function public.seed_application_requirements();
+
+insert into public.application_requirements (application_id, requirement_id, status)
+select
+  a.id,
+  ar.id,
+  'pending'
+from public.applications a
+join public.assistance_requirements ar on ar.assistance_type_id = a.assistance_type_id
+left join public.application_requirements apr
+  on apr.application_id = a.id
+ and apr.requirement_id = ar.id
+where apr.id is null;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql

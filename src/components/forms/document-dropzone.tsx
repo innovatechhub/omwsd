@@ -61,16 +61,16 @@ export function DocumentDropzone({
 
       <div
         {...dropzone.getRootProps()}
-        className="rounded-3xl border border-dashed border-primary/25 bg-secondary/35 p-6 text-center transition-colors hover:border-primary/45 hover:bg-secondary/55"
+        className="rounded-3xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-white"
       >
         <input {...dropzone.getInputProps()} />
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[var(--portal-accent)] shadow-sm">
             <UploadCloud className="h-6 w-6" />
           </div>
           <div className="space-y-1">
-            <p className="font-semibold">Drop files here or click to browse.</p>
-            <p className="text-sm text-muted-foreground">PDF, JPG, and PNG are accepted.</p>
+            <p className="font-semibold text-[var(--portal-ink)]">Drop files here or click to browse.</p>
+            <p className="text-sm text-[var(--portal-muted)]">PDF, JPG, and PNG are accepted.</p>
           </div>
         </div>
       </div>
@@ -80,15 +80,15 @@ export function DocumentDropzone({
           {files.map((file) => (
             <div
               key={`${file.name}-${file.size}`}
-              className="flex items-center justify-between gap-4 rounded-2xl border bg-white/90 px-4 py-3"
+              className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--portal-outline)] bg-white/90 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted">
-                  <FileText className="h-5 w-5 text-primary" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--portal-surface-soft)]">
+                  <FileText className="h-5 w-5 text-[var(--portal-accent)]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="truncate text-sm font-semibold text-[var(--portal-ink)]">{file.name}</p>
+                  <p className="text-xs text-[var(--portal-muted)]">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>

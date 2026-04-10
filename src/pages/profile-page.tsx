@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { ResidentPageHeader } from "@/components/resident/resident-page-header";
+import { ResidentStateCard } from "@/components/resident/resident-state-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -156,44 +158,38 @@ export function ProfilePage() {
 
   if (!isConfigured) {
     return (
-      <ProfileStateCard message="Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before resident profile settings can be loaded." />
+      <ResidentStateCard message="Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before resident profile settings can be loaded." />
     );
   }
 
   if (!user) {
-    return (
-      <ProfileStateCard message="Sign in with a resident account to manage profile settings." />
-    );
+    return <ResidentStateCard message="Sign in with a resident account to manage profile settings." />;
   }
 
   if (profileQuery.isLoading) {
-    return <ProfileStateCard message="Loading your resident profile..." />;
+    return <ResidentStateCard message="Loading your resident profile..." />;
   }
 
   if (profileQuery.error instanceof Error) {
-    return <ProfileStateCard message={profileQuery.error.message} />;
+    return <ResidentStateCard message={profileQuery.error.message} />;
   }
 
   const profile = profileQuery.data;
 
   if (!profile) {
-    return <ProfileStateCard message="Resident profile data is not available yet." />;
+    return <ResidentStateCard message="Resident profile data is not available yet." />;
   }
 
   const isSaving = form.formState.isSubmitting;
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-          Profile
-        </p>
-        <h1 className="mt-2 font-serif text-4xl font-bold">Resident profile settings</h1>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
-          Keep your resident account details current so OMSWD can match your contact and
-          residency data during review.
-        </p>
-      </div>
+      <ResidentPageHeader
+        eyebrow="Profile"
+        title="Resident profile settings"
+        description="Keep your resident account details current so OMSWD can match your contact and residency data during review."
+        chips={["Contact Accuracy", "Residency Validation"]}
+      />
 
       <div className="grid gap-4 xl:grid-cols-4">
         <ProfileMetricCard
@@ -226,7 +222,7 @@ export function ProfilePage() {
         />
       </div>
 
-      <Card>
+      <Card className="portal-card border-[var(--portal-outline)] shadow-none">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -240,6 +236,7 @@ export function ProfilePage() {
               type="button"
               onClick={form.handleSubmit(onSubmit)}
               disabled={isSaving || !form.formState.isDirty}
+              className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
             >
               {isSaving ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -254,11 +251,11 @@ export function ProfilePage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold" htmlFor="email">
+                <label className="text-sm font-semibold text-[var(--portal-ink)]" htmlFor="email">
                   Login email
                 </label>
                 <Input id="email" type="email" {...form.register("email")} disabled />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-[var(--portal-muted)]">
                   Contact OMSWD or an administrator if your sign-in email needs to change.
                 </p>
               </div>
@@ -332,7 +329,7 @@ export function ProfilePage() {
               </Field>
 
               <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold" htmlFor="addressLine">
+                <label className="text-sm font-semibold text-[var(--portal-ink)]" htmlFor="addressLine">
                   Street address
                 </label>
                 <Textarea
@@ -366,7 +363,11 @@ export function ProfilePage() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
+              <Button
+                type="submit"
+                disabled={isSaving || !form.formState.isDirty}
+                className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+              >
                 {isSaving ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
                 ) : (
@@ -417,7 +418,7 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-semibold" htmlFor={id}>
+      <label className="text-sm font-semibold text-[var(--portal-ink)]" htmlFor={id}>
         {label}
       </label>
       {children}
@@ -445,23 +446,15 @@ function ProfileMetricCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-3xl border border-primary/10 bg-white/90 p-5 shadow-sm">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary/65 text-primary">
+    <div className="portal-metric-card p-5">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[var(--portal-accent)]">
         <Icon className="h-5 w-5" />
       </div>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">
         {label}
       </p>
-      <p className="mt-2 font-semibold text-foreground">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+      <p className="mt-2 font-semibold text-[var(--portal-ink)]">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--portal-muted)]">{detail}</p>
     </div>
-  );
-}
-
-function ProfileStateCard({ message }: { message: string }) {
-  return (
-    <Card className="border-primary/10">
-      <CardContent className="p-8 text-sm text-muted-foreground">{message}</CardContent>
-    </Card>
   );
 }

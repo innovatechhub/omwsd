@@ -5,10 +5,14 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DocumentDropzone } from "@/components/forms/document-dropzone";
+import { ResidentPageHeader } from "@/components/resident/resident-page-header";
+import { ResidentStateCard } from "@/components/resident/resident-state-card";
+import { ResidentTableSkeleton } from "@/components/resident/resident-table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
 import { queryKeys } from "@/lib/query-keys";
@@ -58,20 +62,25 @@ export function ResidentUploadsPage() {
   }
 
   async function handleViewDocument(document: ResidentUploadedDocument) {
-    const viewer = window.open("", "_blank", "noopener,noreferrer");
+    const viewer = window.open("about:blank", "_blank");
+    if (viewer) {
+      viewer.opener = null;
+    }
 
     try {
       setViewingDocumentId(document.id);
       const signedUrl = await createSignedFileUrl(document.bucket, document.filePath);
 
-      if (viewer) {
-        viewer.location.href = signedUrl;
+      if (viewer && !viewer.closed) {
+        viewer.location.replace(signedUrl);
         return;
       }
 
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
+      window.location.assign(signedUrl);
     } catch (error) {
-      viewer?.close();
+      if (viewer && !viewer.closed) {
+        viewer.close();
+      }
       toast.error(error instanceof Error ? error.message : "Unable to open this file.");
     } finally {
       setViewingDocumentId((current) => (current === document.id ? null : current));
@@ -79,55 +88,40 @@ export function ResidentUploadsPage() {
   }
 
   if (portalQuery.isLoading) {
-    return <ResidentUploadState message="Loading your upload center..." />;
+    return <ResidentUploadLoadingState />;
   }
 
   if (portalQuery.error instanceof Error) {
-    return <ResidentUploadState message={portalQuery.error.message} />;
+    return <ResidentStateCard message={portalQuery.error.message} />;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-          Upload Requirements
-        </p>
-        <h1 className="mt-2 font-serif text-4xl font-bold">Document submission center</h1>
-      </div>
+      <ResidentPageHeader
+        eyebrow="Upload Requirements"
+        title="Document submission center"
+        description="Attach follow-up files to your current case and keep requirement reviews moving."
+        chips={["Requirement Uploads", "Review Follow-up"]}
+      />
 
-      <Card>
+      <Card className="portal-card border-[var(--portal-outline)] shadow-none">
         <CardHeader>
           <CardTitle>Supporting requirements</CardTitle>
           <CardDescription>
-            Additional files here are attached to your current application in Supabase.
+            Upload follow-up files and link them to your current application.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           {application ? (
             <>
               <div className="grid gap-3 md:grid-cols-3">
-                <div className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
-                    <ShieldCheck className="h-5 w-5" />
-                  </div>
-                  <span>{application.referenceNumber}</span>
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <span>{application.assistanceName}</span>
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
-                    <BadgeCheck className="h-5 w-5" />
-                  </div>
-                  <span>{application.statusLabel}</span>
-                </div>
+                <InfoTile icon={ShieldCheck} label="Reference" value={application.referenceNumber} />
+                <InfoTile icon={FileText} label="Service" value={application.assistanceName} />
+                <InfoTile icon={BadgeCheck} label="Status" value={application.statusLabel} />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold" htmlFor="requirement">
+                <label className="text-sm font-medium text-[var(--portal-ink)]" htmlFor="requirement">
                   Link this upload to a requirement
                 </label>
                 <Select
@@ -146,80 +140,92 @@ export function ResidentUploadsPage() {
 
               <DocumentDropzone
                 label="Upload additional files"
-                description="Add corrected or requested documents here. They will be written to the `uploaded_documents` table and storage bucket."
+                description="Files uploaded here will be saved in your application records."
                 files={files}
                 onChange={setFiles}
               />
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-[var(--portal-muted)]">
                   {application.documents.length} file
-                  {application.documents.length === 1 ? "" : "s"} currently attached to this
-                  request.
+                  {application.documents.length === 1 ? "" : "s"} currently attached.
                 </p>
                 <Button
                   type="button"
                   onClick={() => void handleUpload()}
                   disabled={files.length === 0 || isUploading}
+                  className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
                 >
                   {isUploading ? (
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                   ) : (
                     <FileText className="h-4 w-4" />
                   )}
-                  Upload to application
+                  Upload files
                 </Button>
               </div>
 
-              <div className="grid gap-3">
-                {application.documents.length > 0 ? (
-                  application.documents.map((document) => (
-                    <div
-                      key={document.id}
-                      className="rounded-2xl border border-primary/10 bg-white/90 px-4 py-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="font-semibold text-foreground">{document.fileName}</p>
-                        <Badge variant="outline">{document.statusLabel}</Badge>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Uploaded {document.createdAtLabel}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {document.remarks ?? "No remarks were added for this file yet."}
-                      </p>
-                      <div className="mt-4 flex justify-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void handleViewDocument(document)}
-                          disabled={viewingDocumentId === document.id}
-                        >
-                          {viewingDocumentId === document.id ? (
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                          View file
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl bg-muted/45 px-4 py-4 text-sm text-muted-foreground">
-                    No follow-up documents have been uploaded for this application yet.
-                  </div>
-                )}
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>File</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Uploaded</TableHead>
+                    <TableHead>Remarks</TableHead>
+                    <TableHead className="w-[90px] text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {application.documents.length > 0 ? (
+                    application.documents.map((document) => (
+                      <TableRow key={document.id}>
+                        <TableCell className="font-medium text-[var(--portal-ink)]">{document.fileName}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{document.statusLabel}</Badge>
+                        </TableCell>
+                        <TableCell>{document.createdAtLabel}</TableCell>
+                        <TableCell className="text-[var(--portal-muted)]">
+                          {document.remarks ?? "No remarks were added for this file yet."}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+                            onClick={() => void handleViewDocument(document)}
+                            disabled={viewingDocumentId === document.id}
+                          >
+                            {viewingDocumentId === document.id ? (
+                              <LoaderCircle className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-[var(--portal-muted)]">
+                        No follow-up documents have been uploaded yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-2xl bg-muted/45 px-4 py-4 text-sm text-muted-foreground">
-                No current application is linked to this resident account, so upload storage
-                is not available yet.
+              <div className="portal-empty-state px-4 py-4 text-sm text-[var(--portal-muted)]">
+                No current application is linked to this account. Uploads are available after
+                your first submission.
               </div>
-              <Button asChild>
+              <Button
+                asChild
+                className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+              >
                 <Link to="/request-assistance">Submit a request first</Link>
               </Button>
             </div>
@@ -230,10 +236,60 @@ export function ResidentUploadsPage() {
   );
 }
 
-function ResidentUploadState({ message }: { message: string }) {
+function InfoTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof ShieldCheck;
+  label: string;
+  value: string;
+}) {
   return (
-    <Card className="border-primary/10">
-      <CardContent className="p-8 text-sm text-muted-foreground">{message}</CardContent>
-    </Card>
+    <div className="portal-metric-card flex items-center gap-3 px-3 py-3 text-sm">
+      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white">
+        <Icon className="h-4 w-4 text-[var(--portal-accent)]" />
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
+          {label}
+        </p>
+        <p className="font-medium text-[var(--portal-ink)]">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function ResidentUploadLoadingState() {
+  return (
+    <div className="space-y-6">
+      <ResidentPageHeader
+        eyebrow="Upload Requirements"
+        title="Document submission center"
+        description="Loading your upload center..."
+        chips={["Requirement Uploads", "Review Follow-up"]}
+      />
+      <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+        <CardHeader>
+          <CardTitle>Supporting requirements</CardTitle>
+          <CardDescription>Preparing your upload context and linked requirements.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="portal-metric-card space-y-3 px-3 py-3">
+                <div className="h-3 w-1/2 animate-pulse rounded-full bg-[rgba(214,222,234,0.9)]" />
+                <div className="h-4 w-4/5 animate-pulse rounded-full bg-[rgba(214,222,234,0.8)]" />
+              </div>
+            ))}
+          </div>
+          <div className="portal-empty-state p-5">
+            <div className="h-3 w-1/3 animate-pulse rounded-full bg-[rgba(214,222,234,0.9)]" />
+            <div className="mt-3 h-3 w-2/3 animate-pulse rounded-full bg-[rgba(214,222,234,0.75)]" />
+          </div>
+        </CardContent>
+      </Card>
+      <ResidentTableSkeleton title="Loading uploaded documents" columns={5} rows={5} />
+    </div>
   );
 }

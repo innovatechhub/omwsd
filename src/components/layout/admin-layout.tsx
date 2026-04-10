@@ -36,20 +36,34 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100">
-      <div className="mx-auto grid min-h-screen max-w-[1680px] lg:grid-cols-[300px_1fr]">
-        <aside className="border-b border-primary/10 bg-[linear-gradient(180deg,rgba(20,17,94,1),rgba(17,15,78,1))] p-6 text-primary-foreground lg:border-b-0 lg:border-r">
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <BrandMark size="sm" />
-              <div>
-                <p className="font-serif text-3xl font-bold">Admin Portal</p>
-                <p className="text-sm text-primary-foreground/78">
-                  Operations, verification, and request oversight
-                </p>
+    <div className="portal-shell min-h-screen">
+      <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[280px_1fr]">
+        <aside className="border-b border-[var(--portal-outline)] bg-[rgba(255,255,255,0.75)] p-4 backdrop-blur lg:border-b-0 lg:border-r lg:p-6">
+          <div className="flex h-full flex-col gap-6 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
+            <div className="portal-card space-y-3 p-4">
+              <div className="flex items-center gap-3">
+                <BrandMark size="sm" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">
+                    OMSWD Pandan
+                  </p>
+                  <p className="text-xl font-semibold text-[var(--portal-ink)]">Admin Portal</p>
+                </div>
+              </div>
+              <p className="text-sm text-[var(--portal-muted)]">
+                Manage application review, resident accounts, and operational settings.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
+                  Case Review
+                </span>
+                <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
+                  Verification
+                </span>
               </div>
             </div>
-            <nav className="space-y-2">
+
+            <nav className="grid gap-1.5">
               {adminNav.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
@@ -57,52 +71,52 @@ export function AdminLayout() {
                   end={to === "/admin"}
                   className={({ isActive }) =>
                     [
-                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all",
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-secondary text-secondary-foreground shadow-sm"
-                        : "text-primary-foreground/82 hover:bg-white/10 hover:text-white",
+                        ? "portal-nav-link-active"
+                        : "border-transparent text-[var(--portal-muted)] hover:border-[var(--portal-outline)] hover:bg-[var(--portal-surface-soft)] hover:text-[var(--portal-ink)]",
                     ].join(" ")
                   }
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10">
-                    <Icon className="h-4 w-4" />
-                  </div>
+                  <Icon className="h-4 w-4 shrink-0" />
                   <span>{label}</span>
                 </NavLink>
               ))}
             </nav>
+
+            <div className="mt-auto grid gap-2">
+              <Button
+                asChild
+                variant="outline"
+                className="justify-start border-[var(--portal-outline)] bg-white/70 text-[var(--portal-ink)] hover:bg-white"
+              >
+                <NavLink to="/">
+                  <ArrowLeft className="h-4 w-4" />
+                  Public site
+                </NavLink>
+              </Button>
+              <Button
+                onClick={handleSignOut}
+                className="justify-start bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </Button>
+            </div>
           </div>
         </aside>
 
         <div className="flex min-h-screen flex-col">
-          <header className="border-b border-primary/10 bg-white/90 px-6 py-5 backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-primary/72">
-                  OMSWD Pandan internal workspace
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Case intake, verification, approvals, and resident management
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <NavLink
-                  to="/"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Public site
-                </NavLink>
-                <Button variant="outline" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </Button>
-              </div>
-            </div>
+          <header className="border-b border-[var(--portal-outline)] bg-[rgba(255,255,255,0.76)] px-5 py-4 backdrop-blur md:px-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">
+              Internal Workspace
+            </p>
+            <p className="mt-1 text-sm text-[var(--portal-muted)]">
+              Intake, verification, approvals, and resident support
+            </p>
           </header>
 
-          <main className="flex-1 p-6 md:p-8 xl:p-10">
+          <main className="flex-1 p-5 md:p-8">
             <Outlet />
           </main>
         </div>
