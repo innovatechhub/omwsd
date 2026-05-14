@@ -201,3 +201,34 @@ export const officeContacts = {
 export function getServiceBySlug(slug: string) {
   return publicServices.find((service) => service.slug === slug) ?? null;
 }
+
+export const siteStats = [
+  { label: "Residents Served", value: 1200, suffix: "+" },
+  { label: "Applications Processed", value: 850, suffix: "+" },
+  { label: "Services Offered", value: 8, suffix: "" },
+  { label: "Years of Service", value: 25, suffix: "+" },
+];
+
+export const testimonials = [
+  {
+    quote:
+      "Ang OMSWD ng Pandan ay laging handa na tumulong sa aming pangangailangan. Salamat sa mabilis na serbisyo.",
+    name: "Maria Santos",
+    barangay: "Brgy. Poblacion, Pandan",
+    initials: "MS",
+  },
+  {
+    quote:
+      "Nakatanggap kami ng medical assistance para sa aming anak. Ang proseso ay maayos at patas.",
+    name: "Jose Reyes",
+    barangay: "Brgy. Idiacacan, Pandan",
+    initials: "JR",
+  },
+  {
+    quote:
+      "Salamat sa burial assistance na ibinigay ng OMSWD sa aming pamilya sa mahirap na panahon.",
+    name: "Ana Dela Cruz",
+    barangay: "Brgy. MagAway, Pandan",
+    initials: "AC",
+  },
+];

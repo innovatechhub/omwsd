@@ -204,4 +204,161 @@
     background: color-mix(in oklab, var(--portal-surface-soft) 65%, white);
     border-radius: 0.9rem;
   }
+
+  /* Hero Carousel */
+  .hero-carousel {
+    position: relative;
+    width: 100%;
+    height: clamp(480px, 70vh, 700px);
+    overflow: hidden;
+  }
+
+  .hero-carousel-slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .hero-carousel-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(10, 25, 47, 0.45) 0%,
+      rgba(10, 25, 47, 0.65) 55%,
+      rgba(10, 25, 47, 0.8) 100%
+    );
+  }
+
+  /* Announcements Ticker */
+  .ticker-strip {
+    background: var(--landing-accent);
+    color: white;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    height: 2.6rem;
+  }
+
+  .ticker-label {
+    background: var(--landing-highlight);
+    color: var(--landing-ink);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0 1.1rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  @keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .ticker-track {
+    display: flex;
+    animation: ticker-scroll 28s linear infinite;
+  }
+
+  .ticker-track:hover {
+    animation-play-state: paused;
+  }
+
+  /* Stats Section */
+  .stats-section {
+    background: linear-gradient(135deg, var(--landing-accent-strong) 0%, var(--landing-accent) 100%);
+    color: white;
+  }
+
+  .stat-card {
+    text-align: center;
+    padding: 2rem 1rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .stat-card:last-child {
+    border-right: none;
+  }
+
+  .stat-number {
+    font-family: "Merriweather", serif;
+    font-size: clamp(2.2rem, 4vw, 3.5rem);
+    font-weight: 700;
+    color: var(--landing-highlight);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.82);
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Testimonial Cards */
+  .testimonial-card {
+    background: var(--landing-surface);
+    border: 1px solid var(--landing-outline);
+    border-radius: var(--landing-radius-lg);
+    box-shadow: var(--landing-shadow-soft);
+    padding: 1.75rem;
+    position: relative;
+  }
+
+  .testimonial-card::before {
+    content: "\201C";
+    position: absolute;
+    top: -0.5rem;
+    left: 1.25rem;
+    font-size: 5rem;
+    font-family: "Merriweather", serif;
+    color: var(--landing-highlight);
+    line-height: 1;
+    opacity: 0.6;
+  }
+
+  /* Section divider */
+  .section-divider {
+    height: 4px;
+    background: linear-gradient(90deg, var(--landing-accent), var(--landing-highlight), var(--landing-accent));
+    opacity: 0.3;
+    border: none;
+  }
+
+  /* Map section */
+  .map-section-wrapper {
+    border-radius: var(--landing-radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--landing-outline);
+    box-shadow: var(--landing-shadow-card);
+  }
+
+  /* Timeline step */
+  .timeline-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+
+  .timeline-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 2rem;
+    left: calc(50% + 2rem);
+    width: calc(100% - 4rem);
+    height: 2px;
+    background: linear-gradient(90deg, var(--landing-accent), var(--landing-highlight));
+    opacity: 0.4;
+  }
 }

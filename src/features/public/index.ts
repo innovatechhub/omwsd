@@ -6,4 +6,6 @@ export {
   publicAnnouncements,
   publicServices,
   requirementsChecklist,
+  siteStats,
+  testimonials,
 } from "@/features/public/content";

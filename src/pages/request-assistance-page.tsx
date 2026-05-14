@@ -4,9 +4,13 @@ import {
   ArrowRight,
   BadgeCheck,
   CheckCircle2,
+  ClipboardList,
   FileText,
+  IdCard,
   LoaderCircle,
+  MapPin,
   ShieldCheck,
+  User,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
@@ -16,7 +20,6 @@ import { z } from "zod";
 
 import { DocumentDropzone } from "@/components/forms/document-dropzone";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -424,141 +427,226 @@ export function RequestAssistancePage() {
   }
 
   return (
-    <div className="container space-y-10 py-14">
-      <section className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="space-y-5">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-            Request Assistance
-          </p>
-          <h1 className="font-serif text-4xl font-bold md:text-5xl">
-            Submit a structured assistance request online.
-          </h1>
-          <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-            This intake form collects personal details, request context, and supporting
-            files before sending the case into OMSWD verification.
-          </p>
+    <div className="landing-page text-[var(--landing-ink)]">
+
+      {/* Page hero */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-[rgba(21,91,145,0.1)] blur-3xl" />
+          <div className="absolute right-0 top-8 h-60 w-60 rounded-full bg-[rgba(242,193,79,0.18)] blur-3xl" />
         </div>
+        <div className="container relative grid gap-8 py-[var(--landing-space-section)] lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div>
+            <span className="inline-block rounded-full border border-[var(--landing-outline)] bg-[var(--landing-surface)] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
+              Request Assistance
+            </span>
+            <h1 className="public-hero-title mt-5">
+              Submit Your Assistance Request Online
+            </h1>
+            <p className="public-hero-lead mt-4 max-w-xl">
+              This intake form collects your personal details, request context, and supporting
+              files before sending your case into OMSWD verification.
+            </p>
+          </div>
 
-        <Card className="bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(235,245,255,0.88))]">
-          <CardHeader>
-            <CardTitle>Resident journey</CardTitle>
-            <CardDescription>
-              These are the main steps the portal is organized around.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-            {processTimeline.map((item, index) => (
-              <div key={item} className="flex gap-4 rounded-2xl bg-white/80 px-4 py-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                  {index + 1}
-                </div>
-                <p>{item}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
-
-      {submissionResult ? (
-        <Card className="border-accent/25 bg-[linear-gradient(165deg,rgba(255,255,255,0.98),rgba(232,250,239,0.94))]">
-          <CardContent className="flex flex-col gap-4 p-8 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-                  Submission complete
-                </p>
-                <h2 className="mt-2 font-serif text-3xl font-bold">
-                  Reference {submissionResult.referenceNumber}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Your request is now marked as pending verification. Use the resident
-                  portal to follow status updates and document follow-ups.
-                </p>
+          <div className="landing-card overflow-hidden">
+            <div className="h-1.5 bg-[linear-gradient(90deg,var(--landing-accent),var(--landing-highlight))]" />
+            <div className="p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--landing-muted)] mb-4">Resident Journey</p>
+              <div className="space-y-2">
+                {processTimeline.map((item, index) => (
+                  <div key={item} className="landing-soft-card flex gap-3 px-4 py-3 text-sm">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--landing-accent)] text-xs font-bold text-white">
+                      {index + 1}
+                    </div>
+                    <p className="text-[var(--landing-muted)] leading-6">{item}</p>
+                  </div>
+                ))}
               </div>
             </div>
-            <Button asChild>
-              <Link to="/resident">Open resident portal</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
+          </div>
+        </div>
+      </section>
 
-      <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle>Form steps</CardTitle>
-            <CardDescription>Complete each section before submitting.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {steps.map((step, index) => (
-              <div
-                key={step.key}
-                className={[
-                  "rounded-2xl border px-4 py-3 text-sm transition-colors",
-                  index === currentStep
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : index < currentStep
-                      ? "border-accent/30 bg-accent/10"
-                      : "bg-white/85",
-                ].join(" ")}
-              >
-                <p className="font-semibold">{step.title}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      <div className="container pb-[var(--landing-space-section)]">
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{steps[currentStep].title}</CardTitle>
-            <CardDescription>
-              Fill in this section before moving to the next part of the request.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {renderStep()}
-
-              {!isConfigured ? (
-                <div className="rounded-2xl border border-primary/15 bg-secondary/60 px-4 py-4 text-sm text-muted-foreground">
-                  Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before request
-                  submission can be enabled.
+        {/* Success card */}
+        {submissionResult ? (
+          <div className="landing-card mb-8 overflow-hidden">
+            <div className="h-1.5 bg-emerald-500" />
+            <div className="flex flex-col gap-4 p-7 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                  <CheckCircle2 className="h-6 w-6" />
                 </div>
-              ) : null}
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={currentStep === 0 || isSubmitting}
-                  onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-
-                {currentStep < steps.length - 1 ? (
-                  <Button type="button" onClick={goToNextStep}>
-                    Next
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button type="submit" disabled={isSubmitting || !isConfigured || !user}>
-                    {isSubmitting ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Submit request
-                  </Button>
-                )}
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wider text-emerald-600">Submission Complete</p>
+                  <h2 className="mt-1 font-serif text-2xl font-bold text-[var(--landing-ink)]">
+                    Reference {submissionResult.referenceNumber}
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-[var(--landing-muted)]">
+                    Your request is pending verification. Use the resident portal to track updates and follow-ups.
+                  </p>
+                </div>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+              <Button className="shrink-0 rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]" asChild>
+                <Link to="/resident">Open Resident Portal</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Form layout */}
+        <div className="space-y-6">
+
+          {/* Horizontal step timeline */}
+          <div className="landing-card overflow-hidden">
+            <div className="h-1.5 bg-[linear-gradient(90deg,var(--landing-accent),var(--landing-highlight))]" />
+            <div className="px-6 py-6 md:px-10">
+              {/* Icons row */}
+              <div className="relative grid items-center" style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}>
+                {/* Connecting line */}
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-[var(--landing-outline)]" />
+                {/* Progress fill */}
+                <div
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-[var(--landing-accent)] to-[var(--landing-highlight)] transition-all duration-500"
+                  style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
+                />
+
+                {[User, MapPin, IdCard, ClipboardList, ShieldCheck].map((Icon, i) => {
+                  const isDone = i < currentStep;
+                  const isActive = i === currentStep;
+                  return (
+                    <div key={i} className="relative z-10 flex flex-col items-center justify-center gap-2">
+                      {/* Outer ring */}
+                      <div
+                        className="flex h-16 w-16 items-center justify-center rounded-full transition-all duration-300"
+                        style={{
+                          background: isDone
+                            ? "rgba(16,185,129,0.12)"
+                            : isActive
+                            ? "rgba(21,91,145,0.15)"
+                            : "rgba(217,205,182,0.35)",
+                          boxShadow: isActive
+                            ? "0 0 0 3px rgba(21,91,145,0.2)"
+                            : "none",
+                        }}
+                      >
+                        {/* Inner circle */}
+                        <div
+                          className="flex h-11 w-11 items-center justify-center rounded-full transition-all duration-300"
+                          style={{
+                            background: isDone
+                              ? "#10b981"
+                              : isActive
+                              ? "var(--landing-accent)"
+                              : "rgba(217,205,182,0.6)",
+                            color: isDone || isActive ? "white" : "var(--landing-muted)",
+                          }}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="h-5 w-5" />
+                          ) : (
+                            <Icon className="h-5 w-5" />
+                          )}
+                        </div>
+                      </div>
+                      {/* Step label */}
+                      <span
+                        className="hidden text-xs font-bold uppercase tracking-[0.14em] sm:block text-center max-w-[80px]"
+                        style={{
+                          color: isDone
+                            ? "#10b981"
+                            : isActive
+                            ? "var(--landing-accent)"
+                            : "var(--landing-muted)",
+                        }}
+                      >
+                        Step {i + 1}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Step title row — must match the icons row grid exactly */}
+              <div className="mt-1 hidden sm:grid" style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}>
+                {steps.map((step, i) => (
+                  <div key={step.key} className="flex flex-col items-center text-center px-1">
+                    <p
+                      className="text-xs font-semibold leading-snug"
+                      style={{
+                        color: i === currentStep ? "var(--landing-ink)" : "var(--landing-muted)",
+                      }}
+                    >
+                      {step.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Main form card */}
+          <div className="landing-card overflow-hidden">
+            <div className="h-1.5 bg-[linear-gradient(90deg,var(--landing-accent),var(--landing-highlight))]" />
+            <div className="p-6 md:p-8">
+              <div className="mb-6">
+                <h2 className="font-serif text-2xl font-bold text-[var(--landing-ink)]">{steps[currentStep].title}</h2>
+                <p className="mt-1 text-sm text-[var(--landing-muted)]">
+                  Fill in this section before moving to the next part of the request.
+                </p>
+              </div>
+
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                {renderStep()}
+
+                {!isConfigured ? (
+                  <div className="rounded-2xl border border-[var(--landing-outline)] bg-[var(--landing-surface)] px-4 py-4 text-sm text-[var(--landing-muted)]">
+                    Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> before request submission can be enabled.
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--landing-outline)] pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl border-[var(--landing-outline)]"
+                    disabled={currentStep === 0 || isSubmitting}
+                    onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+
+                  {currentStep < steps.length - 1 ? (
+                    <Button
+                      type="button"
+                      className="rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
+                      onClick={goToNextStep}
+                    >
+                      Next Step
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      className="rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
+                      disabled={isSubmitting || !isConfigured || !user}
+                    >
+                      {isSubmitting ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      Submit Request
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

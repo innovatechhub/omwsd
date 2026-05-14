@@ -1,8 +1,10 @@
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
   BookCheck,
+  Clock,
   FileText,
   HandHelping,
   School,
@@ -16,6 +18,15 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { getServiceBySlug } from "@/features/public";
 
+const revealContainer = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } },
+};
+const revealItem = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const } },
+};
+
 const serviceIconBySlug: Record<string, LucideIcon> = {
   "medical-assistance": Stethoscope,
   "burial-assistance": Siren,
@@ -27,139 +38,129 @@ export function ServiceDetailsPage() {
   const { serviceSlug } = useParams();
   const service = getServiceBySlug(serviceSlug ?? "");
 
-  if (!service) {
-    return <Navigate to="/services" replace />;
-  }
+  if (!service) return <Navigate to="/services" replace />;
 
   const ServiceIcon = serviceIconBySlug[service.slug] ?? HandHelping;
 
   return (
-    <div className="landing-page pb-14 text-[var(--landing-ink)]">
-      <div className="container public-page-stack">
-        <section className="landing-card relative overflow-hidden p-6 md:p-8">
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,var(--landing-accent),var(--landing-highlight))]" />
+    <div className="landing-page text-[var(--landing-ink)]">
 
-          <div className="flex flex-wrap gap-2">
-            <span className="landing-chip px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
-              {service.category}
-            </span>
-            <span className="landing-chip px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
-              Service Details
-            </span>
-          </div>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-[rgba(21,91,145,0.1)] blur-3xl" />
+          <div className="absolute right-0 top-8 h-60 w-60 rounded-full bg-[rgba(242,193,79,0.18)] blur-3xl" />
+        </div>
+        <div className="container relative py-[var(--landing-space-section)]">
+          <motion.div initial="hidden" animate="show" variants={revealContainer}>
+            <motion.div variants={revealItem}>
+              <Link
+                to="/services"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--landing-muted)] hover:text-[var(--landing-ink)] transition-colors mb-6"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to Services
+              </Link>
+            </motion.div>
 
-          <div className="mt-4 flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--landing-accent)] text-white">
-              <ServiceIcon className="h-6 w-6" />
-            </div>
+            <motion.div variants={revealItem} className="flex items-center gap-5">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--landing-accent)] text-white shadow-xl">
+                <ServiceIcon className="h-8 w-8" />
+              </div>
+              <div>
+                <span className="rounded-full border border-[var(--landing-outline)] bg-[var(--landing-surface)] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--landing-muted)]">
+                  {service.category}
+                </span>
+                <h1 className="public-hero-title mt-2">{service.title}</h1>
+              </div>
+            </motion.div>
+
+            <motion.p variants={revealItem} className="public-hero-lead mt-5 max-w-3xl">
+              {service.description}
+            </motion.p>
+
+            <motion.div variants={revealItem} className="mt-8 flex flex-wrap gap-3">
+              <Button size="lg" className="rounded-xl bg-[var(--landing-accent)] px-7 text-white hover:bg-[var(--landing-accent-strong)]" asChild>
+                <Link to="/request-assistance">
+                  Request This Service <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" className="rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]" asChild>
+                <Link to="/requirements">View Requirements Guide</Link>
+              </Button>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Turnaround banner */}
+      <div className="stats-section py-10">
+        <div className="container flex flex-col items-center gap-2 text-center text-white md:flex-row md:justify-between md:text-left">
+          <div className="flex items-center gap-3">
+            <Clock className="h-6 w-6 text-[var(--landing-highlight)]" />
             <div>
-              <h1 className="public-hero-title">
-                {service.title}
-              </h1>
-              <p className="public-hero-lead mt-4 max-w-3xl">
-                {service.description}
-              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Typical Processing Time</p>
+              <p className="font-serif text-xl font-bold">{service.turnaround}</p>
             </div>
           </div>
+          <p className="text-sm text-white/70 max-w-md">Turnaround varies depending on case completeness and verification findings.</p>
+        </div>
+      </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              className="rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
-              asChild
-            >
-              <Link to="/request-assistance">
-                Request this service
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              className="rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]"
-              asChild
-            >
-              <Link to="/services">
-                <ArrowLeft className="h-4 w-4" />
-                Back to services
-              </Link>
-            </Button>
-          </div>
-        </section>
-
-        <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-          <article className="landing-card p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
-              Common Requirements
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold">Prepare these before starting</h2>
-
-            <div className="mt-5 space-y-3">
+      {/* Requirements + Process */}
+      <section className="container py-[var(--landing-space-section)]">
+        <motion.div
+          className="grid gap-6 lg:grid-cols-2"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.1 }}
+          variants={revealContainer}
+        >
+          <motion.article variants={revealItem} className="landing-card p-6 md:p-8">
+            <p className="public-kicker">Common Requirements</p>
+            <h2 className="mt-2 font-serif text-2xl font-bold md:text-3xl">Prepare Before Starting</h2>
+            <p className="mt-2 text-sm text-[var(--landing-muted)]">Have these documents ready before you fill the form.</p>
+            <div className="mt-6 space-y-3">
               {service.requirements.map((item, index) => {
                 const icons = [FileText, BookCheck, BadgeCheck, ShieldCheck];
                 const Icon = icons[index % icons.length];
-
                 return (
-                  <div
-                    key={item}
-                    className="landing-soft-card flex items-start gap-3 px-3 py-3 text-sm text-[var(--landing-muted)]"
-                  >
+                  <div key={item} className="landing-soft-card flex items-start gap-3 px-4 py-3">
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--landing-accent)] text-white">
                       <Icon className="h-4 w-4" />
                     </div>
-                    <span>{item}</span>
+                    <span className="text-sm leading-6 text-[var(--landing-muted)]">{item}</span>
                   </div>
                 );
               })}
             </div>
-          </article>
+          </motion.article>
 
-          <article className="landing-card p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
-              Typical Review Pace
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold">{service.turnaround}</h2>
-            <p className="mt-2 text-sm leading-7 text-[var(--landing-muted)]">
-              Turnaround time varies depending on case completeness and verification findings.
-            </p>
+          <motion.article variants={revealItem} className="landing-card p-6 md:p-8">
+            <p className="public-kicker">Process Flow</p>
+            <h2 className="mt-2 font-serif text-2xl font-bold md:text-3xl">How It Works</h2>
+            <p className="mt-2 text-sm text-[var(--landing-muted)]">What usually happens after you submit this request.</p>
+            <div className="mt-6 space-y-4">
+              {service.process.map((item, index) => (
+                <div key={item} className="landing-soft-card flex gap-4 px-4 py-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--landing-accent)] text-sm font-bold text-white shadow">
+                    {index + 1}
+                  </div>
+                  <p className="text-sm leading-7 text-[var(--landing-muted)]">{item}</p>
+                </div>
+              ))}
+            </div>
 
             <div className="mt-6 space-y-3">
-              <Button
-                className="w-full rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]"
-                asChild
-              >
-                <Link to="/request-assistance">Request this service</Link>
+              <Button className="w-full rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]" asChild>
+                <Link to="/request-assistance">Apply for {service.title}</Link>
               </Button>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]"
-                asChild
-              >
-                <Link to="/requirements">View requirements guide</Link>
+              <Button variant="outline" className="w-full rounded-xl border-[var(--landing-outline)] bg-[var(--landing-surface)] text-[var(--landing-ink)] hover:bg-[#f2ead7]" asChild>
+                <Link to="/services"><ArrowLeft className="h-4 w-4" /> Back to All Services</Link>
               </Button>
             </div>
-          </article>
-        </section>
-
-        <section className="landing-card p-6 md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--landing-muted)]">
-            Process Flow
-          </p>
-          <h2 className="mt-2 text-3xl font-semibold">How the process works</h2>
-          <p className="mt-2 text-sm leading-7 text-[var(--landing-muted)]">
-            What usually happens after you submit this assistance request.
-          </p>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {service.process.map((item, index) => (
-              <div key={item} className="landing-soft-card flex gap-3 px-4 py-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--landing-accent)] text-xs font-semibold text-white">
-                  {index + 1}
-                </div>
-                <p className="text-sm leading-7 text-[var(--landing-muted)]">{item}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+          </motion.article>
+        </motion.div>
+      </section>
     </div>
   );
 }
