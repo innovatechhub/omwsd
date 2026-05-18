@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Eye, LoaderCircle, Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Eye,
+  LoaderCircle,
+  Search,
+  XCircle,
+  RotateCcw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
   getAdminApplicationCaseDetails,
   getAdminApplications,
+  getApplicationStatusHistory,
   saveAdminApplicationRemarks,
   updateAdminApplicationStatus,
+  updateRequirementVerificationStatus,
 } from "@/services/admin-service";
 import { createSignedFileUrl } from "@/services/storage-service";
-import type { AdminApplicationRecord, AdminCaseDocumentRecord } from "@/types/admin";
+import type { AdminApplicationRecord, AdminCaseDocumentRecord, AdminCaseRequirementRecord } from "@/types/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +41,26 @@ function getStatusBadgeVariant(status: AdminApplicationRecord["status"]) {
   return "outline";
 }
 
+function getSlaDaysClass(rawDate: string | null): { label: string; className: string } | null {
+  if (!rawDate) {
+    return null;
+  }
+
+  const days = Math.floor((Date.now() - new Date(rawDate).getTime()) / 86_400_000);
+
+  if (days < 3) {
+    return { label: `${days}d`, className: "bg-green-50 text-green-700 border-green-200" };
+  }
+
+  if (days <= 7) {
+    return { label: `${days}d`, className: "bg-yellow-50 text-yellow-700 border-yellow-200" };
+  }
+
+  return { label: `${days}d`, className: "bg-red-50 text-red-700 border-red-200" };
+}
+
 export function AdminApplicationsPage() {
+  const queryClient = useQueryClient();
   const applicationsQuery = useQuery({
     queryKey: ["admin", "applications"],
     queryFn: getAdminApplications,
@@ -42,8 +73,11 @@ export function AdminApplicationsPage() {
   const [statusDraft, setStatusDraft] =
     useState<AdminApplicationRecord["status"]>("Pending verification");
   const [noteDraft, setNoteDraft] = useState("");
+  const [correctionItems, setCorrectionItems] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   const filteredApplications = useMemo(() => {
     return applications.filter((application) => {
@@ -80,10 +114,24 @@ export function AdminApplicationsPage() {
     enabled: selectedApplication !== null,
   });
 
+  const statusHistoryQuery = useQuery({
+    queryKey: ["admin", "applications", "history", selectedApplication?.id ?? null],
+    queryFn: async () => {
+      if (!selectedApplication) {
+        return [];
+      }
+
+      return getApplicationStatusHistory(selectedApplication.id);
+    },
+    enabled: selectedApplication !== null && historyExpanded,
+  });
+
   useEffect(() => {
     if (selectedApplication) {
       setStatusDraft(selectedApplication.status);
       setNoteDraft(selectedApplication.remarks);
+      setCorrectionItems("");
+      setHistoryExpanded(false);
     }
   }, [selectedApplication]);
 
@@ -126,10 +174,16 @@ export function AdminApplicationsPage() {
 
     try {
       setIsSaving(true);
+
+      const isCorrectionStatus = statusDraft === "For correction";
+      const combinedRemarks = isCorrectionStatus && correctionItems.trim()
+        ? `${noteDraft.trim()}\n\nItems to correct:\n${correctionItems.trim()}`
+        : noteDraft;
+
       if (selectedApplication.status !== statusDraft) {
-        await updateAdminApplicationStatus(selectedApplication.id, statusDraft, noteDraft);
+        await updateAdminApplicationStatus(selectedApplication.id, statusDraft, combinedRemarks);
       } else {
-        await saveAdminApplicationRemarks(selectedApplication.id, noteDraft);
+        await saveAdminApplicationRemarks(selectedApplication.id, combinedRemarks);
       }
       await applicationsQuery.refetch();
       toast.success("Case review changes saved.");
@@ -141,12 +195,76 @@ export function AdminApplicationsPage() {
     }
   }
 
+  async function handleRequirementAction(
+    requirement: AdminCaseRequirementRecord,
+    action: "approved" | "rejected" | "needs_resubmission",
+  ) {
+    if (!selectedApplication) {
+      return;
+    }
+
+    try {
+      await updateRequirementVerificationStatus(requirement.id, action);
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "applications", "details", selectedApplication.id],
+      });
+      const labels = { approved: "verified", rejected: "rejected", needs_resubmission: "marked for resubmission" };
+      toast.success(`Requirement "${requirement.name}" ${labels[action]}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update requirement.");
+    }
+  }
+
+  async function handleBulkApprove() {
+    if (selectedRows.size === 0) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const toApprove = applications.filter(
+        (app) => selectedRows.has(app.reference) && app.status !== "Approved" && app.status !== "Completed",
+      );
+
+      await Promise.all(
+        toApprove.map((app) => updateAdminApplicationStatus(app.id, "Approved", app.remarks)),
+      );
+      await applicationsQuery.refetch();
+      setSelectedRows(new Set());
+      toast.success(`${toApprove.length} application(s) approved.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to bulk approve.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   function openCaseModal(reference: string) {
     setActiveReference(reference);
   }
 
   function closeCaseModal() {
     setActiveReference(null);
+  }
+
+  function toggleRow(reference: string) {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(reference)) {
+        next.delete(reference);
+      } else {
+        next.add(reference);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllRows() {
+    if (selectedRows.size === filteredApplications.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(filteredApplications.map((app) => app.reference)));
+    }
   }
 
   async function handleViewDocument(document: AdminCaseDocumentRecord) {
@@ -185,29 +303,11 @@ export function AdminApplicationsPage() {
     return map;
   }, [caseDetailsQuery.data?.requirements]);
 
+  const allSelected =
+    filteredApplications.length > 0 && selectedRows.size === filteredApplications.length;
+
   return (
     <div className="space-y-6">
-      <section className="portal-card relative overflow-hidden p-6 md:p-7">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,var(--portal-accent),var(--portal-highlight))]" />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--portal-muted)]">
-          Applications
-        </p>
-        <h1 className="mt-2 font-serif text-3xl font-semibold text-[var(--portal-ink)] md:text-4xl">
-          Review queue and case management
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm text-[var(--portal-muted)]">
-          Filter the active queue, update status transitions, and save case notes from one page.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
-            Verification Queue
-          </span>
-          <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
-            Case Actions
-          </span>
-        </div>
-      </section>
-
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="All records" value={String(applications.length)} />
         <SummaryCard label="Pending verification" value={String(totalPending)} />
@@ -243,10 +343,25 @@ export function AdminApplicationsPage() {
 
       <Card className="portal-card border-[var(--portal-outline)] shadow-none">
         <CardHeader>
-          <CardTitle>Application table</CardTitle>
-          <CardDescription>
-            Clean queue view with responsive cards on mobile and modal-based review actions.
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>Application table</CardTitle>
+              <CardDescription>
+                SLA badge shows days since submission. Select rows for bulk actions.
+              </CardDescription>
+            </div>
+            {selectedRows.size > 0 && (
+              <Button
+                size="sm"
+                onClick={() => void handleBulkApprove()}
+                disabled={isSaving}
+                className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Approve {selectedRows.size} selected
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
@@ -261,106 +376,138 @@ export function AdminApplicationsPage() {
           ) : filteredApplications.length > 0 ? (
             <>
               <div className="grid gap-3 md:hidden">
-                {filteredApplications.map((application) => (
-                  <button
-                    key={application.reference}
-                    type="button"
-                    className="rounded-xl border border-[var(--portal-outline)] bg-white p-4 text-left transition-colors hover:bg-[var(--portal-surface-soft)]"
-                    onClick={() => openCaseModal(application.reference)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[var(--portal-accent)]">
-                          {application.reference}
-                        </p>
-                        <p className="mt-1 truncate text-base font-semibold text-[var(--portal-ink)]">
-                          {application.resident}
-                        </p>
+                {filteredApplications.map((application) => {
+                  const sla = getSlaDaysClass(application.submittedAtRaw);
+
+                  return (
+                    <button
+                      key={application.reference}
+                      type="button"
+                      className="rounded-xl border border-[var(--portal-outline)] bg-white p-4 text-left transition-colors hover:bg-[var(--portal-surface-soft)]"
+                      onClick={() => openCaseModal(application.reference)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[var(--portal-accent)]">
+                            {application.reference}
+                          </p>
+                          <p className="mt-1 truncate text-base font-semibold text-[var(--portal-ink)]">
+                            {application.resident}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <Badge variant={getStatusBadgeVariant(application.status)}>
+                            {application.status}
+                          </Badge>
+                          {sla && (
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${sla.className}`}>
+                              <Clock className="h-3 w-3" />
+                              {sla.label}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Badge variant={getStatusBadgeVariant(application.status)}>
-                        {application.status}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <DetailRow label="Service" value={application.assistance} />
-                      <DetailRow label="Priority" value={application.priority} />
-                      <DetailRow label="Barangay" value={application.barangay} />
-                      <DetailRow label="Submitted" value={application.submittedAt} />
-                    </div>
-                  </button>
-                ))}
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <DetailRow label="Service" value={application.assistance} />
+                        <DetailRow label="Barangay" value={application.barangay} />
+                        <DetailRow label="Submitted" value={application.submittedAt} />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <tr>
+                      <TableHead className="w-[40px]">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAllRows}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Resident</TableHead>
                       <TableHead>Service</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Age</TableHead>
                       <TableHead>Barangay</TableHead>
                       <TableHead>Submitted</TableHead>
-                      <TableHead>Priority</TableHead>
                       <TableHead className="w-[70px] text-right">Actions</TableHead>
                     </tr>
                   </TableHeader>
                   <TableBody>
-                    {filteredApplications.map((application) => (
-                      <TableRow
-                        key={application.reference}
-                        data-selected={activeReference === application.reference}
-                        className="cursor-pointer"
-                        onClick={() => openCaseModal(application.reference)}
-                      >
-                        <TableCell>
-                          <p className="font-medium text-[var(--portal-accent)]">{application.reference}</p>
-                        </TableCell>
-                        <TableCell>{application.resident}</TableCell>
-                        <TableCell className="text-muted-foreground">{application.assistance}</TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(application.status)}>
-                            {application.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{application.barangay}</TableCell>
-                        <TableCell>{application.submittedAt}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              application.priority === "Urgent" ? "secondary" : "outline"
-                            }
-                          >
-                            {application.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <RowActions
-                            actions={[
-                              {
-                                label: "Open review form",
-                                icon: <Eye className="h-4 w-4" />,
-                                onSelect: () => openCaseModal(application.reference),
-                              },
-                              {
-                                label: "Quick approve",
-                                icon: <CheckCircle2 className="h-4 w-4" />,
-                                disabled:
-                                  isSaving ||
-                                  application.status === "Approved" ||
-                                  application.status === "Completed",
-                                onSelect: () =>
-                                  void handleStatusUpdate(
-                                    application,
-                                    "Approved",
-                                    application.remarks,
-                                  ),
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredApplications.map((application) => {
+                      const sla = getSlaDaysClass(application.submittedAtRaw);
+
+                      return (
+                        <TableRow
+                          key={application.reference}
+                          data-selected={activeReference === application.reference}
+                          className="cursor-pointer"
+                          onClick={() => openCaseModal(application.reference)}
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.has(application.reference)}
+                              onChange={() => toggleRow(application.reference)}
+                              className="h-4 w-4 rounded border-gray-300"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <p className="font-medium text-[var(--portal-accent)]">{application.reference}</p>
+                          </TableCell>
+                          <TableCell>{application.resident}</TableCell>
+                          <TableCell className="text-muted-foreground">{application.assistance}</TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusBadgeVariant(application.status)}>
+                              {application.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {sla ? (
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${sla.className}`}>
+                                <Clock className="h-3 w-3" />
+                                {sla.label}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{application.barangay}</TableCell>
+                          <TableCell>{application.submittedAt}</TableCell>
+                          <TableCell className="text-right">
+                            <RowActions
+                              actions={[
+                                {
+                                  label: "Open review form",
+                                  icon: <Eye className="h-4 w-4" />,
+                                  onSelect: () => openCaseModal(application.reference),
+                                },
+                                {
+                                  label: "Quick approve",
+                                  icon: <CheckCircle2 className="h-4 w-4" />,
+                                  disabled:
+                                    isSaving ||
+                                    application.status === "Approved" ||
+                                    application.status === "Completed",
+                                  onSelect: () =>
+                                    void handleStatusUpdate(
+                                      application,
+                                      "Approved",
+                                      application.remarks,
+                                    ),
+                                },
+                              ]}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -377,7 +524,7 @@ export function AdminApplicationsPage() {
         open={selectedApplication !== null}
         onClose={closeCaseModal}
         title="Case review form"
-        description="Update status and reviewer remarks without leaving the queue."
+        description="Update status, verify requirements, and review case history."
         size="xl"
         footer={
           <div className="flex flex-wrap justify-end gap-2">
@@ -408,11 +555,17 @@ export function AdminApplicationsPage() {
               <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
                 <DetailRow label="Submitted" value={selectedApplication.submittedAt} />
                 <DetailRow label="Barangay" value={selectedApplication.barangay} />
-                <DetailRow label="Priority" value={selectedApplication.priority} />
+                <DetailRow
+                  label="Age"
+                  value={(() => {
+                    const sla = getSlaDaysClass(selectedApplication.submittedAtRaw);
+                    return sla ? `${sla.label} old` : "—";
+                  })()}
+                />
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="case-status">
                   Case status
@@ -431,12 +584,6 @@ export function AdminApplicationsPage() {
                   <option value="Completed">Completed</option>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="case-priority">
-                  Priority
-                </label>
-                <Input id="case-priority" value={selectedApplication.priority} readOnly />
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -448,9 +595,25 @@ export function AdminApplicationsPage() {
                 value={noteDraft}
                 onChange={(event) => setNoteDraft(event.target.value)}
                 placeholder="Add reviewer notes, correction requests, or release instructions."
-                className="min-h-[180px]"
+                className="min-h-[100px]"
               />
             </div>
+
+            {statusDraft === "For correction" && (
+              <div className="space-y-2 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                <label className="text-sm font-semibold text-yellow-800" htmlFor="correction-items">
+                  Items the resident needs to correct
+                </label>
+                <p className="text-xs text-yellow-700">These will be appended to remarks and sent as a notification.</p>
+                <Textarea
+                  id="correction-items"
+                  value={correctionItems}
+                  onChange={(event) => setCorrectionItems(event.target.value)}
+                  placeholder="List what the resident needs to fix or resubmit (one per line)."
+                  className="min-h-[80px] border-yellow-200 bg-white"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -472,6 +635,7 @@ export function AdminApplicationsPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Files</TableHead>
                       <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </tr>
                   </TableHeader>
                   <TableBody>
@@ -488,11 +652,45 @@ export function AdminApplicationsPage() {
                               requirement.description ??
                               "No requirement remarks yet."}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                title="Verify"
+                                className="h-7 w-7 p-0 text-green-600 hover:border-green-400 hover:bg-green-50"
+                                onClick={() => void handleRequirementAction(requirement, "approved")}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                title="Reject"
+                                className="h-7 w-7 p-0 text-red-600 hover:border-red-400 hover:bg-red-50"
+                                onClick={() => void handleRequirementAction(requirement, "rejected")}
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                title="Needs resubmission"
+                                className="h-7 w-7 p-0 text-yellow-600 hover:border-yellow-400 hover:bg-yellow-50"
+                                onClick={() => void handleRequirementAction(requirement, "needs_resubmission")}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                           No requirement records are linked yet.
                         </TableCell>
                       </TableRow>
@@ -567,6 +765,55 @@ export function AdminApplicationsPage() {
                     )}
                   </TableBody>
                 </Table>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setHistoryExpanded((prev) => !prev)}
+                className="flex w-full items-center justify-between rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--portal-ink)] hover:bg-white transition-colors"
+              >
+                <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Case History</span>
+                {historyExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+              {historyExpanded && (
+                <div className="rounded-xl border border-[var(--portal-outline)]">
+                  {statusHistoryQuery.isLoading ? (
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                      Loading case history...
+                    </div>
+                  ) : statusHistoryQuery.data?.length ? (
+                    <Table>
+                      <TableHeader>
+                        <tr>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Remarks</TableHead>
+                        </tr>
+                      </TableHeader>
+                      <TableBody>
+                        {statusHistoryQuery.data.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="whitespace-nowrap">{entry.createdAtLabel}</TableCell>
+                            <TableCell className="font-medium">{entry.statusLabel}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {entry.remarks ?? "No remarks recorded."}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                      No status history recorded for this case yet.
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

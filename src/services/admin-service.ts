@@ -239,6 +239,7 @@ export async function getAdminApplications() {
       barangay: String(item.applicant_barangay ?? "Not specified"),
       priority: derivePriority(typeof item.urgency === "string" ? item.urgency : null),
       submittedAt: formatDate(typeof item.submitted_at === "string" ? item.submitted_at : null),
+      submittedAtRaw: typeof item.submitted_at === "string" ? item.submitted_at : null,
       remarks: String(item.admin_remarks ?? ""),
     } satisfies AdminApplicationRecord;
   });
@@ -515,6 +516,7 @@ export async function getVerificationQueue() {
           service: application.assistance,
           status: application.status,
           priority: application.priority,
+          submittedAtRaw: application.submittedAtRaw,
         }) satisfies AdminQueueItem,
     );
 }
@@ -608,6 +610,73 @@ export async function saveAdminSetting(settingKey: string, settingValue: Record<
       onConflict: "setting_key",
     },
   );
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateRequirementVerificationStatus(
+  requirementId: string,
+  status: "approved" | "rejected" | "needs_resubmission",
+  remarks?: string,
+) {
+  assertSupabaseConfigured();
+
+  const { error } = await supabase
+    .from("application_requirements")
+    .update({
+      status,
+      remarks: remarks ?? null,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", requirementId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function getApplicationStatusHistory(applicationId: string) {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("status_histories")
+    .select("id, new_status, remarks, created_at")
+    .eq("application_id", applicationId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id ?? ""),
+    status: typeof row.new_status === "string" ? row.new_status : "",
+    statusLabel: formatCaseStatusLabel(typeof row.new_status === "string" ? row.new_status : null),
+    remarks: typeof row.remarks === "string" ? row.remarks : null,
+    createdAt: typeof row.created_at === "string" ? row.created_at : "",
+    createdAtLabel: formatDate(typeof row.created_at === "string" ? row.created_at : null),
+  }));
+}
+
+export async function sendResidentFollowUpNotification(
+  residentProfileId: string,
+  title: string,
+  body: string,
+  applicationId?: string,
+) {
+  assertSupabaseConfigured();
+
+  const { error } = await supabase.from("notifications").insert({
+    profile_id: residentProfileId,
+    ...(applicationId ? { application_id: applicationId } : {}),
+    title,
+    body,
+    category: "follow_up",
+    link_url: "/resident/application",
+    is_read: false,
+  });
 
   if (error) {
     throw error;

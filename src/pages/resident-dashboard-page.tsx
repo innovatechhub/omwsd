@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { ResidentPageHeader } from "@/components/resident/resident-page-header";
 import { ResidentStateCard } from "@/components/resident/resident-state-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,13 +90,6 @@ export function ResidentDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <ResidentPageHeader
-        eyebrow="Dashboard"
-        title="Resident overview"
-        description="Track your request status and open the next step quickly."
-        chips={["Status Tracking", "Resident Follow-up"]}
-      />
-
       <Card className="portal-card border-[var(--portal-outline)] shadow-none">
         <CardHeader>
           <CardTitle>Current application</CardTitle>
@@ -158,6 +150,33 @@ export function ResidentDashboardPage() {
             <CardDescription>Where your request currently is in the process.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
+            {application ? (
+              <>
+                <div className="rounded-lg border border-[var(--portal-accent)]/20 bg-[var(--portal-accent)]/5 px-4 py-3 text-sm">
+                  <p className="font-semibold text-[var(--portal-ink)]">What to do next</p>
+                  <p className="mt-0.5 text-[var(--portal-muted)]">
+                    {application.requiresAction
+                      ? "Action required: review staff remarks and upload any requested files."
+                      : application.status === "pending_verification"
+                        ? "Your request is queued for initial validation — no action needed yet."
+                        : application.status === "under_review"
+                          ? "Your request is under review. Check back for status updates."
+                          : application.status === "approved" || application.status === "completed"
+                            ? "Your request has been processed. No further action is required."
+                            : "Keep this page checked for new status updates."}
+                  </p>
+                  {application.requiresAction && (
+                    <Link
+                      to="/resident/uploads"
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--portal-accent)] hover:underline"
+                    >
+                      <Upload className="h-3 w-3" />
+                      Go to upload center
+                    </Link>
+                  )}
+                </div>
+              </>
+            ) : null}
             {application ? (
               progressSteps.map((step, index) => {
                 const isComplete = index < application.progressStep;

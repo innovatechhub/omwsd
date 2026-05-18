@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Save, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
+import { Save, ShieldCheck, SlidersHorizontal, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 
-import { ResidentPageHeader } from "@/components/resident/resident-page-header";
 import { getAdminSettings, saveAdminSetting } from "@/services/admin-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 type SavingSection = "requirements" | "staff" | "policies" | null;
-type SettingsTab = "requirements" | "staff" | "policies" | "readiness";
+type SettingsTab = "requirements" | "staff" | "policies" | "users";
 
 type SettingsPageMode = "admin" | "resident";
 
@@ -64,6 +63,10 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
   );
   const [savingSection, setSavingSection] = useState<SavingSection>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>("requirements");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState("social_worker");
+  const [addUserError, setAddUserError] = useState("");
 
   const settingsData = settingsQuery.data ?? fallbackSettings;
   const requirementTemplates =
@@ -86,25 +89,6 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
         .filter(Boolean),
     [requirementsText],
   );
-  const setupReadiness = useMemo(() => {
-    const hasTemplates = Object.keys(requirementTemplates).length > 0;
-    const hasStaffAssignments = staffAssignments.length > 0;
-    const hasPolicyValues = Number(verificationSla) >= 1 && Number(correctionWindow) >= 1;
-
-    return {
-      hasTemplates,
-      hasStaffAssignments,
-      hasPolicyValues,
-      score:
-        Number(hasTemplates) + Number(hasStaffAssignments) + Number(hasPolicyValues),
-    };
-  }, [
-    correctionWindow,
-    requirementTemplates,
-    staffAssignments.length,
-    verificationSla,
-  ]);
-
   useEffect(() => {
     const selectedRequirements = requirementTemplates[serviceType];
 
@@ -215,28 +199,63 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
     }
   }
 
+  async function handleAddUser() {
+    setAddUserError("");
+    const email = newUserEmail.trim().toLowerCase();
+
+    if (!newUserName.trim()) {
+      setAddUserError("Full name is required.");
+      return;
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAddUserError("Enter a valid email address.");
+      return;
+    }
+
+    if (staffRoles[email]) {
+      setAddUserError("This email already has a role assigned.");
+      return;
+    }
+
+    try {
+      setSavingSection("staff");
+
+      await saveAdminSetting("staff_roles", {
+        ...staffRoles,
+        [email]: newUserRole,
+      });
+      await settingsQuery.refetch();
+      toast.success(`${newUserName.trim()} added as ${newUserRole.replace("_", " ")}.`);
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserRole("social_worker");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add user.");
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
+  async function handleRemoveUser(email: string) {
+    try {
+      setSavingSection("staff");
+
+      const updated = Object.fromEntries(
+        Object.entries(staffRoles).filter(([key]) => key !== email),
+      );
+      await saveAdminSetting("staff_roles", updated as Record<string, unknown>);
+      await settingsQuery.refetch();
+      toast.success(`${email} removed.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove user.");
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {isResidentView ? (
-        <ResidentPageHeader
-          eyebrow="Settings"
-          title="Portal settings overview"
-          description="This resident view mirrors the admin settings interface and shows default workflow configurations managed by OMSWD administrators."
-          chips={["Managed Defaults", "Resident Visibility"]}
-        />
-      ) : (
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Settings
-          </p>
-          <h1 className="text-3xl font-semibold">Administrative configuration</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Update requirement templates, assign internal access, and control the default workflow
-            rules used across the admin workspace.
-          </p>
-        </section>
-      )}
-
       <section className="grid gap-4 md:grid-cols-3">
         <SummaryCard
           title="Requirement templates"
@@ -286,13 +305,15 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
                 onClick={() => setActiveTab("policies")}
                 residentMode={isResidentView}
               />
-              <TabButton
-                isActive={activeTab === "readiness"}
-                label="Readiness"
-                icon={<Sparkles className="h-4 w-4" />}
-                onClick={() => setActiveTab("readiness")}
-                residentMode={isResidentView}
-              />
+              {!isResidentView && (
+                <TabButton
+                  isActive={activeTab === "users"}
+                  label="Add Users"
+                  icon={<UserPlus className="h-4 w-4" />}
+                  onClick={() => setActiveTab("users")}
+                  residentMode={false}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -614,71 +635,99 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
           </Card>
         ) : null}
 
-        {activeTab === "readiness" ? (
-          <Card className={portalCardClass}>
+        {activeTab === "users" ? (
+          <Card>
             <CardHeader>
-              <CardTitle>Setup readiness</CardTitle>
+              <CardTitle>Add users</CardTitle>
               <CardDescription>
-                Quick validation of core admin configuration before daily operations.
+                Add new staff members and assign their portal role.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <ReadinessItem
-                label="Requirement templates configured"
-                ready={setupReadiness.hasTemplates}
-                residentMode={isResidentView}
-              />
-              <ReadinessItem
-                label="Staff assignments configured"
-                ready={setupReadiness.hasStaffAssignments}
-                residentMode={isResidentView}
-              />
-              <ReadinessItem
-                label="Policy values configured"
-                ready={setupReadiness.hasPolicyValues}
-                residentMode={isResidentView}
-              />
-              <div
-                className={[
-                  "rounded-xl border border-dashed px-4 py-3",
-                  isResidentView
-                    ? "border-[var(--portal-outline)] bg-[var(--portal-surface-soft)]"
-                    : "bg-muted/20",
-                ].join(" ")}
-              >
-                <p
-                  className={[
-                    "text-xs font-semibold uppercase tracking-[0.14em]",
-                    isResidentView ? "text-[var(--portal-muted)]" : "text-muted-foreground",
-                  ].join(" ")}
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-primary" htmlFor="new-user-name">
+                    Full name
+                  </label>
+                  <Input
+                    id="new-user-name"
+                    placeholder="e.g. Maria Santos"
+                    value={newUserName}
+                    onChange={(e) => { setNewUserName(e.target.value); setAddUserError(""); }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-primary" htmlFor="new-user-email">
+                    Email address
+                  </label>
+                  <Input
+                    id="new-user-email"
+                    type="email"
+                    placeholder="e.g. maria@omswd.gov"
+                    value={newUserEmail}
+                    onChange={(e) => { setNewUserEmail(e.target.value); setAddUserError(""); }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-primary" htmlFor="new-user-role">
+                  Role
+                </label>
+                <Select
+                  id="new-user-role"
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value)}
                 >
-                  Readiness score
-                </p>
-                <p className={isResidentView ? "mt-1 text-2xl font-semibold text-[var(--portal-ink)]" : "mt-1 text-2xl font-semibold"}>
-                  {setupReadiness.score}/3
-                </p>
-                <p className={isResidentView ? "text-sm text-[var(--portal-muted)]" : "text-sm text-muted-foreground"}>
-                  Keep this at full score for stable daily operations.
-                </p>
+                  <option value="social_worker">Social Worker</option>
+                  <option value="admin">Administrator</option>
+                  <option value="super_admin">Super Administrator</option>
+                </Select>
               </div>
-              <div
-                className={[
-                  "rounded-xl border px-4 py-3 text-sm",
-                  isResidentView
-                    ? "border-[var(--portal-outline)] bg-white text-[var(--portal-muted)]"
-                    : "border-primary/15 bg-primary/5 text-muted-foreground",
-                ].join(" ")}
+              {addUserError ? (
+                <p className="text-sm font-medium text-destructive">{addUserError}</p>
+              ) : null}
+              <Button
+                onClick={handleAddUser}
+                disabled={savingSection === "staff" || settingsQuery.isLoading}
               >
-                <p className={isResidentView ? "font-medium text-[var(--portal-ink)]" : "font-medium text-foreground"}>
-                  Tip
-                </p>
-                <p className="mt-1">
-                  Save templates first, then assign staff roles, and finally lock policy values.
-                </p>
-              </div>
+                <UserPlus className="h-4 w-4" />
+                Add user
+              </Button>
+
+              {staffAssignments.length > 0 ? (
+                <div className="space-y-2 border-t border-primary/10 pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary/72">
+                    Current users
+                  </p>
+                  <div className="space-y-2">
+                    {staffAssignments.map(([email, role]) => (
+                      <div
+                        key={email}
+                        className="flex items-center justify-between gap-3 rounded-xl border bg-background px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{email}</p>
+                          <p className="text-xs capitalize text-muted-foreground">
+                            {role.replace("_", " ")}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveUser(email)}
+                          disabled={savingSection === "staff"}
+                          className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/8 px-2.5 py-1 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/15 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         ) : null}
+
       </section>
     </div>
   );
@@ -753,37 +802,6 @@ function PreviewRow({
   );
 }
 
-function ReadinessItem({
-  label,
-  ready,
-  residentMode = false,
-}: {
-  label: string;
-  ready: boolean;
-  residentMode?: boolean;
-}) {
-  return (
-    <div
-      className={[
-        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
-        residentMode ? "border-[var(--portal-outline)] bg-white" : "bg-background",
-      ].join(" ")}
-    >
-      <p className={residentMode ? "text-sm text-[var(--portal-ink)]" : "text-sm"}>{label}</p>
-      <span
-        className={[
-          "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em]",
-          ready
-            ? "bg-emerald-500/15 text-emerald-700"
-            : "bg-amber-500/15 text-amber-700",
-        ].join(" ")}
-      >
-        {ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-        {ready ? "Ready" : "Needs setup"}
-      </span>
-    </div>
-  );
-}
 
 function TabButton({
   isActive,

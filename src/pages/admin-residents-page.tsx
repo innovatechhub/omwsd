@@ -4,7 +4,9 @@ import { Eye, Search, Send, UserMinus, UserRoundCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  getAdminApplications,
   getAdminResidents,
+  sendResidentFollowUpNotification,
   setResidentAccountState,
   verifyResident,
 } from "@/services/admin-service";
@@ -16,6 +18,7 @@ import { Modal } from "@/components/ui/modal";
 import { RowActions } from "@/components/ui/row-actions";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import type { AdminResidentRecord } from "@/types/admin";
 
 export function AdminResidentsPage() {
@@ -24,7 +27,13 @@ export function AdminResidentsPage() {
     queryFn: getAdminResidents,
   });
 
+  const applicationsQuery = useQuery({
+    queryKey: ["admin", "applications"],
+    queryFn: getAdminApplications,
+  });
+
   const residents = residentsQuery.data ?? [];
+  const applications = applicationsQuery.data ?? [];
   const [searchTerm, setSearchTerm] = useState("");
   const [verificationFilter, setVerificationFilter] = useState("all");
   const [activeResidentId, setActiveResidentId] = useState<string | null>(null);
@@ -54,6 +63,15 @@ export function AdminResidentsPage() {
     () =>
       activeResidentId ? residents.find((resident) => resident.id === activeResidentId) ?? null : null,
     [activeResidentId, residents],
+  );
+
+  const [followUpResidentId, setFollowUpResidentId] = useState<string | null>(null);
+  const [followUpMessage, setFollowUpMessage] = useState("");
+  const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
+
+  const followUpResident = useMemo(
+    () => (followUpResidentId ? residents.find((r) => r.id === followUpResidentId) ?? null : null),
+    [followUpResidentId, residents],
   );
 
   const verifiedCount = residents.filter((resident) => resident.status === "Verified").length;
@@ -91,6 +109,32 @@ export function AdminResidentsPage() {
     }
   }
 
+  async function handleSendFollowUp() {
+    if (!followUpResident) {
+      return;
+    }
+
+    const message = followUpMessage.trim() || "Please check your application status and complete any pending requirements.";
+    const latestApp = applications.find((app) => app.resident === followUpResident.name);
+
+    try {
+      setIsSendingFollowUp(true);
+      await sendResidentFollowUpNotification(
+        followUpResident.profileId,
+        "Follow-up from OMSWD",
+        message,
+        latestApp?.id,
+      );
+      toast.success("Follow-up notification sent to resident.");
+      setFollowUpResidentId(null);
+      setFollowUpMessage("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to send follow-up.");
+    } finally {
+      setIsSendingFollowUp(false);
+    }
+  }
+
   function openResidentModal(residentId: string) {
     setActiveResidentId(residentId);
   }
@@ -101,16 +145,6 @@ export function AdminResidentsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Residents
-        </p>
-        <h1 className="text-3xl font-semibold">Resident registry and verification</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Search resident profiles, verify records, and manage account access from one place.
-        </p>
-      </section>
-
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="Total residents" value={String(residents.length)} />
         <SummaryCard label="Verified" value={String(verifiedCount)} />
@@ -255,6 +289,49 @@ export function AdminResidentsPage() {
       </Card>
 
       <Modal
+        open={followUpResident !== null}
+        onClose={() => setFollowUpResidentId(null)}
+        title="Send follow-up notification"
+        description="This message will appear in the resident's notification inbox."
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setFollowUpResidentId(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSendFollowUp()}
+              disabled={isSendingFollowUp}
+            >
+              <Send className="h-4 w-4" />
+              Send notification
+            </Button>
+          </div>
+        }
+      >
+        {followUpResident ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <p className="text-sm font-semibold">{followUpResident.name}</p>
+              <p className="text-xs text-muted-foreground">{followUpResident.barangay} · {followUpResident.contact}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="followup-message">
+                Message (optional)
+              </label>
+              <Textarea
+                id="followup-message"
+                value={followUpMessage}
+                onChange={(e) => setFollowUpMessage(e.target.value)}
+                placeholder="Leave blank to send the default follow-up reminder."
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
         open={selectedResident !== null}
         onClose={closeResidentModal}
         title="Resident management"
@@ -307,7 +384,11 @@ export function AdminResidentsPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => toast.success("Verification follow-up reminder sent.")}
+                onClick={() => {
+                  setFollowUpResidentId(selectedResident.id);
+                  setFollowUpMessage("");
+                  closeResidentModal();
+                }}
               >
                 <Send className="h-4 w-4" />
                 Send follow-up

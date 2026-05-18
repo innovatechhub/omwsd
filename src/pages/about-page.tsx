@@ -1,8 +1,6 @@
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Building2,
-  HeartHandshake,
   ShieldCheck,
   Users,
   Award,
@@ -20,27 +18,6 @@ const revealItem = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const } },
 };
-
-const pillars = [
-  {
-    title: "Resident-Centered Intake",
-    description:
-      "The portal is designed to make assistance intake clearer, more trackable, and easier to follow for residents of Pandan.",
-    icon: HeartHandshake,
-  },
-  {
-    title: "Structured Verification",
-    description:
-      "Applications move through a documented verification process so staff can validate residency and supporting records consistently.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Operational Visibility",
-    description:
-      "The system supports dashboards, reports, and an auditable application workflow for staff and management.",
-    icon: Building2,
-  },
-];
 
 const values = [
   {
@@ -130,36 +107,6 @@ export function AboutPage() {
             </p>
           </motion.div>
         </div>
-      </section>
-
-      {/* Pillars */}
-      <section className="container py-[var(--landing-space-section)]">
-        <motion.div
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.15 }}
-          variants={revealContainer}
-        >
-          <motion.div variants={revealItem} className="mb-10 text-center">
-            <p className="public-kicker">What We Stand For</p>
-            <h2 className="mt-2 font-serif text-3xl font-bold md:text-4xl">Our Core Pillars</h2>
-          </motion.div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {pillars.map(({ title, description, icon: Icon }) => (
-              <motion.article
-                key={title}
-                variants={revealItem}
-                className="landing-card p-6 hover:-translate-y-1 transition-transform duration-300"
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--landing-accent)] text-white shadow-lg">
-                  <Icon className="h-7 w-7" />
-                </div>
-                <h3 className="mt-5 text-xl font-bold">{title}</h3>
-                <p className="mt-3 text-sm leading-7 text-[var(--landing-muted)]">{description}</p>
-              </motion.article>
-            ))}
-          </div>
-        </motion.div>
       </section>
 
       {/* What this platform is for */}

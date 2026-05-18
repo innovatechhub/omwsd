@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Eye, FileText, LoaderCircle, ShieldCheck } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { BadgeCheck, Eye, FileText, Info, LoaderCircle, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DocumentDropzone } from "@/components/forms/document-dropzone";
@@ -21,8 +21,11 @@ import { createSignedFileUrl } from "@/services/storage-service";
 import type { ResidentUploadedDocument } from "@/types/resident";
 
 export function ResidentUploadsPage() {
+  const [searchParams] = useSearchParams();
+  const preselectedRequirementId = searchParams.get("requirement") ?? "";
+
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedRequirementId, setSelectedRequirementId] = useState("");
+  const [selectedRequirementId, setSelectedRequirementId] = useState(preselectedRequirementId);
   const [isUploading, setIsUploading] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
   const { user } = useAuth();
@@ -33,6 +36,12 @@ export function ResidentUploadsPage() {
     application?.requirements.filter((requirement) =>
       ["pending", "rejected", "needs_resubmission"].includes(requirement.status),
     ) ?? [];
+
+  useEffect(() => {
+    if (preselectedRequirementId) {
+      setSelectedRequirementId(preselectedRequirementId);
+    }
+  }, [preselectedRequirementId]);
 
   async function handleUpload() {
     if (!application) {
@@ -51,9 +60,12 @@ export function ResidentUploadsPage() {
       await queryClient.invalidateQueries({
         queryKey: user ? queryKeys.resident.portal(user.id) : ["resident", "portal"],
       });
+      const count = files.length;
       setFiles([]);
       setSelectedRequirementId("");
-      toast.success("Documents uploaded to your resident application.");
+      toast.success(
+        `${count} file${count === 1 ? "" : "s"} uploaded successfully.`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to upload files.");
     } finally {
@@ -138,12 +150,39 @@ export function ResidentUploadsPage() {
                 </Select>
               </div>
 
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <div className="flex items-start gap-3">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                  <div className="space-y-1 text-sm text-blue-800">
+                    <p className="font-semibold">Upload guidelines</p>
+                    <ul className="list-inside list-disc space-y-0.5 text-xs text-blue-700">
+                      <li>Accepted formats: PDF, JPG, PNG, HEIC</li>
+                      <li>Maximum file size: 10 MB per file</li>
+                      <li>Clear, readable scans are required for verification</li>
+                      {selectedRequirementId && (() => {
+                        const req = openRequirements.find((r) => r.id === selectedRequirementId);
+                        return req?.description ? (
+                          <li>For <strong>{req.name}</strong>: {req.description}</li>
+                        ) : null;
+                      })()}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               <DocumentDropzone
                 label="Upload additional files"
                 description="Files uploaded here will be saved in your application records."
                 files={files}
                 onChange={setFiles}
               />
+
+              {files.length > 0 && (
+                <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm text-[var(--portal-ink)]">
+                  <span className="font-semibold">{files.length}</span> file{files.length === 1 ? "" : "s"} selected for upload:{" "}
+                  {files.map((f) => f.name).join(", ")}
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-[var(--portal-muted)]">

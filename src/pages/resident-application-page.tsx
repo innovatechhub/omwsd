@@ -1,6 +1,6 @@
-import { ArrowRight, Clock3, FileText, ListChecks, ShieldCheck, Upload, Wallet } from "lucide-react";
+import { ArrowRight, Clock3, FileText, ListChecks, Printer, ShieldCheck, Upload, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { ResidentPageHeader } from "@/components/resident/resident-page-header";
 import { ResidentStateCard } from "@/components/resident/resident-state-card";
@@ -21,6 +21,7 @@ const progressSteps = [
 ];
 
 export function ResidentApplicationPage() {
+  const navigate = useNavigate();
   const portalQuery = useResidentPortal();
   const application = portalQuery.data?.application ?? null;
   const [activeTab, setActiveTab] = useState<DetailsTab>("history");
@@ -107,7 +108,11 @@ export function ResidentApplicationPage() {
               icon={ShieldCheck}
               label="Current status"
               value={application.statusLabel}
-              detail={application.adminRemarks ?? "No staff remarks have been added yet."}
+              detail={
+                application.adminRemarks
+                  ? `Staff remarks: ${application.adminRemarks}`
+                  : "No staff remarks have been added yet."
+              }
             />
             <ApplicationMetaCard
               icon={FileText}
@@ -172,6 +177,14 @@ export function ResidentApplicationPage() {
                 Open notifications
                 <Clock3 className="h-4 w-4" />
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+              onClick={() => window.print()}
+            >
+              <Printer className="h-4 w-4" />
+              Print / Save PDF
             </Button>
           </div>
         </CardContent>
@@ -259,22 +272,41 @@ export function ResidentApplicationPage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Requirement</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Files</TableHead>
-                    <TableHead>Remarks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {application.requirements.length > 0 ? (
-                    application.requirements.map((requirement) => (
-                      <TableRow key={requirement.id}>
-                        <TableCell className="font-medium">{requirement.name}</TableCell>
-                        <TableCell>
+            <CardContent className="space-y-3">
+              {application.requirements.length > 0 ? (
+                application.requirements.map((requirement) => {
+                  const needsResubmit =
+                    requirement.status === "rejected" ||
+                    requirement.status === "needs_resubmission";
+                  const daysInfo = requirement.reviewedAt
+                    ? Math.floor(
+                        (Date.now() - new Date(requirement.reviewedAt).getTime()) / 86_400_000,
+                      )
+                    : null;
+
+                  return (
+                    <div
+                      key={requirement.id}
+                      className={[
+                        "rounded-xl border p-4",
+                        needsResubmit
+                          ? "border-yellow-300 bg-yellow-50"
+                          : "border-[var(--portal-outline)] bg-white",
+                      ].join(" ")}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-medium text-[var(--portal-ink)]">{requirement.name}</p>
+                          {requirement.description && (
+                            <p className="text-xs text-[var(--portal-muted)]">{requirement.description}</p>
+                          )}
+                          {daysInfo !== null && (
+                            <p className="text-xs text-[var(--portal-muted)]">
+                              Reviewed {daysInfo} day{daysInfo === 1 ? "" : "s"} ago
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge
                             variant={
                               requirement.status === "approved"
@@ -286,24 +318,51 @@ export function ResidentApplicationPage() {
                           >
                             {requirement.statusLabel}
                           </Badge>
-                        </TableCell>
-                        <TableCell>{requirement.documents.length}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {requirement.remarks ??
-                            requirement.description ??
-                            "No additional remarks attached."}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                        No explicit requirement records are linked yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                          {needsResubmit && (
+                            <Button
+                              size="sm"
+                              className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+                              onClick={() =>
+                                navigate(`/resident/uploads?requirement=${requirement.id}`)
+                              }
+                            >
+                              <Upload className="h-3 w-3" />
+                              Resubmit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {requirement.remarks && (
+                        <p className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+                          Staff note: {requirement.remarks}
+                        </p>
+                      )}
+                      {requirement.documents.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--portal-muted)]">
+                            Linked files ({requirement.documents.length})
+                          </p>
+                          {requirement.documents.map((doc) => (
+                            <div
+                              key={doc.id}
+                              className="flex items-center justify-between gap-3 rounded-md border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-3 py-1.5 text-sm"
+                            >
+                              <span className="truncate text-[var(--portal-ink)]">{doc.fileName}</span>
+                              <Badge variant="outline" className="shrink-0 text-xs">
+                                {doc.statusLabel}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+                  No explicit requirement records are linked yet.
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : null}
@@ -315,7 +374,7 @@ export function ResidentApplicationPage() {
                 <div>
                   <CardTitle>Uploaded documents</CardTitle>
                   <CardDescription>
-                    Files already attached to this request in Supabase.
+                    Files already attached to this request.
                   </CardDescription>
                 </div>
                 <Button asChild variant="outline" size="sm">
@@ -331,6 +390,7 @@ export function ResidentApplicationPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>File</TableHead>
+                    <TableHead>Linked requirement</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Uploaded</TableHead>
                     <TableHead>Remarks</TableHead>
@@ -338,21 +398,30 @@ export function ResidentApplicationPage() {
                 </TableHeader>
                 <TableBody>
                   {application.documents.length > 0 ? (
-                    application.documents.map((document) => (
-                      <TableRow key={document.id}>
-                        <TableCell className="font-medium">{document.fileName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{document.statusLabel}</Badge>
-                        </TableCell>
-                        <TableCell>{document.createdAtLabel}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {document.remarks ?? "No document remarks yet."}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    application.documents.map((document) => {
+                      const linkedReq = application.requirements.find(
+                        (r) => r.id === document.applicationRequirementId,
+                      );
+
+                      return (
+                        <TableRow key={document.id}>
+                          <TableCell className="font-medium">{document.fileName}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {linkedReq ? linkedReq.name : "General supporting document"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{document.statusLabel}</Badge>
+                          </TableCell>
+                          <TableCell>{document.createdAtLabel}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {document.remarks ?? "No document remarks yet."}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                         No uploaded documents are linked yet.
                       </TableCell>
                     </TableRow>

@@ -220,7 +220,7 @@ export async function createAssistanceRequest(
       resident_id: residentId,
       assistance_type_id: assistanceType.id,
       status: "pending_verification",
-      urgency: values.urgency,
+      urgency: "medium",
       requested_amount: parseNumber(values.requestedAmount),
       request_reason: values.requestReason,
       applicant_full_name: values.fullName,

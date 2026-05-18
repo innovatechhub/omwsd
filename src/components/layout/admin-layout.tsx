@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 
 import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/services/auth-service";
 
 const adminNav = [
@@ -24,6 +26,7 @@ const adminNav = [
 
 export function AdminLayout() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
 
   async function handleSignOut() {
     try {
@@ -50,9 +53,18 @@ export function AdminLayout() {
                   <p className="text-xl font-semibold text-[var(--portal-ink)]">Admin Portal</p>
                 </div>
               </div>
-              <p className="text-sm text-[var(--portal-muted)]">
-                Manage application review, resident accounts, and operational settings.
-              </p>
+              <div className="portal-soft-card p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--portal-muted)]">
+                  Admin Access
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-[var(--portal-ink)]">
+                  <ShieldCheck className="h-4 w-4 text-[var(--portal-accent)]" />
+                  {profile?.full_name ?? user?.email ?? "Admin account"}
+                </p>
+                {user?.email && profile?.full_name && (
+                  <p className="mt-0.5 truncate text-xs text-[var(--portal-muted)]">{user.email}</p>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
                   Case Review
@@ -107,15 +119,6 @@ export function AdminLayout() {
         </aside>
 
         <div className="flex min-h-screen flex-col">
-          <header className="border-b border-[var(--portal-outline)] bg-[rgba(255,255,255,0.76)] px-5 py-4 backdrop-blur md:px-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">
-              Internal Workspace
-            </p>
-            <p className="mt-1 text-sm text-[var(--portal-muted)]">
-              Intake, verification, approvals, and resident support
-            </p>
-          </header>
-
           <main className="flex-1 p-5 md:p-8">
             <Outlet />
           </main>

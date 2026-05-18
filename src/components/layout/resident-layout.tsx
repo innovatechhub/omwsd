@@ -10,12 +10,13 @@ import {
   Upload,
   UserCircle2,
 } from "lucide-react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useResidentPortal } from "@/hooks/use-resident-portal";
 import { signOut } from "@/services/auth-service";
 
 const residentNav = [
@@ -30,6 +31,7 @@ const residentNav = [
 export function ResidentLayout() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const portalQuery = useResidentPortal();
 
   async function handleSignOut() {
     try {
@@ -64,6 +66,11 @@ export function ResidentLayout() {
                   <ShieldCheck className="h-4 w-4 text-[var(--portal-accent)]" />
                   {profile?.full_name ?? "Resident account"}
                 </p>
+                {portalQuery.data?.application?.referenceNumber && (
+                  <p className="mt-1 text-xs text-[var(--portal-muted)]">
+                    Ref: <span className="font-semibold text-[var(--portal-accent)]">{portalQuery.data.application.referenceNumber}</span>
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
@@ -126,44 +133,6 @@ export function ResidentLayout() {
         </aside>
 
         <div className="flex min-h-screen flex-col">
-          <header className="border-b border-[var(--portal-outline)] bg-[rgba(255,255,255,0.82)] px-5 py-4 backdrop-blur md:px-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">
-                  Resident Workspace
-                </p>
-                <p className="mt-1 text-sm text-[var(--portal-muted)]">
-                  Track your application, requirements, notifications, and profile details
-                </p>
-                <p className="mt-2 text-sm font-medium text-[var(--portal-ink)]">
-                  Welcome back, {profile?.full_name ?? "Resident"}.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="border-[var(--portal-outline)] bg-white/80 text-[var(--portal-ink)] hover:bg-white"
-                >
-                  <Link to="/resident/uploads">
-                    <Upload className="h-4 w-4" />
-                    Upload documents
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="sm"
-                  className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
-                >
-                  <Link to="/resident/notifications">
-                    <Bell className="h-4 w-4" />
-                    View alerts
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </header>
           <main className="flex-1 p-5 md:p-8">
             <Outlet />
           </main>

@@ -2,11 +2,9 @@ import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  ArrowRight,
   CheckCircle2,
   ClipboardCheck,
   LoaderCircle,
-  Siren,
   TimerReset,
 } from "lucide-react";
 import {
@@ -21,14 +19,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Link } from "react-router-dom";
 
 import {
   getAdminDashboardMetrics,
   getApplicationsByBarangay,
   getVerificationQueue,
 } from "@/services/admin-service";
-import type { AdminQueueItem } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -67,13 +63,10 @@ export function AdminDashboardPage() {
   const highQueueCount = queue.filter((item) => item.priority === "High").length;
   const normalQueueCount = queue.filter((item) => item.priority === "Normal").length;
   const queueWithNextAction = queue.filter((item) => item.status !== "Completed").length;
-  const escalatedQueue = urgentQueueCount + highQueueCount;
   const completionRate =
     totalApplications > 0 ? Math.round((approved / totalApplications) * 100) : 0;
   const reviewPressure =
     totalApplications > 0 ? Math.round((pendingVerification / totalApplications) * 100) : 0;
-  const escalationRate = queue.length > 0 ? Math.round((escalatedQueue / queue.length) * 100) : 0;
-  const topBarangay = barangays[0]?.name ?? "No barangay data yet";
 
   const statusBreakdown = [
     {
@@ -120,75 +113,6 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/25 bg-[linear-gradient(125deg,rgba(20,17,94,0.98)_0%,rgba(37,99,235,0.92)_58%,rgba(12,74,110,0.92)_100%)] p-6 text-primary-foreground shadow-panel md:p-8">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 left-20 h-72 w-72 rounded-full bg-secondary/30 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-4">
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
-              Operations Command Center
-            </p>
-            <h1 className="max-w-2xl font-serif text-3xl leading-tight md:text-[2.2rem]">
-              Admin dashboard for live intake, verification, and resolution flow.
-            </h1>
-            <p className="max-w-2xl text-sm text-primary-foreground/85 md:text-base">
-              Monitor workload pressure, identify queue bottlenecks, and route staff effort to
-              the highest-impact cases first.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="secondary">
-                <Link to="/admin/applications">
-                  Open applications queue
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="border-white/40 bg-white/8 text-primary-foreground hover:bg-white/18"
-              >
-                <Link to="/admin/reports">
-                  Open reports
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <SignalPill
-              label="Completion rate"
-              value={`${completionRate}%`}
-              detail={`${formatCount(approved)} approved out of ${formatCount(totalApplications)} total`}
-              icon={<CheckCircle2 className="h-4 w-4" />}
-            />
-            <SignalPill
-              label="Review pressure"
-              value={`${reviewPressure}%`}
-              detail={`${formatCount(pendingVerification)} waiting for verification`}
-              icon={<TimerReset className="h-4 w-4" />}
-            />
-            <SignalPill
-              label="Escalation rate"
-              value={`${escalationRate}%`}
-              detail={`${formatCount(escalatedQueue)} urgent/high cases in active queue`}
-              icon={<Siren className="h-4 w-4" />}
-            />
-            <SignalPill
-              label="Top intake barangay"
-              value={topBarangay}
-              detail={
-                barangays.length > 0
-                  ? `${formatCount(barangays[0].applications)} current applications`
-                  : "Waiting for intake data"
-              }
-              icon={<ClipboardCheck className="h-4 w-4" />}
-            />
-          </div>
-        </div>
-      </section>
-
       {dashboardQuery.isError ? (
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
@@ -402,27 +326,6 @@ export function AdminDashboardPage() {
         </Card>
       </section>
 
-      <Card className="overflow-hidden border-primary/15">
-        <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/0 to-transparent">
-          <CardTitle>Live verification queue</CardTitle>
-          <CardDescription>
-            Prioritized reference list for immediate reviewer action.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {dashboardQuery.isLoading ? (
-            <LoadingState message="Loading verification queue..." />
-          ) : queue.length > 0 ? (
-            <div className="grid gap-3">
-              {queue.map((item) => (
-                <QueueLineItem key={item.reference} item={item} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No verification queue entries yet." />
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -470,62 +373,6 @@ function MetricCard({
         </p>
       </CardContent>
     </Card>
-  );
-}
-
-function SignalPill({
-  label,
-  value,
-  detail,
-  icon,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  icon: ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/30 bg-white/10 p-3 backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-primary-foreground/70">
-          {label}
-        </p>
-        <span className="text-primary-foreground/75">{icon}</span>
-      </div>
-      <p className="mt-2 truncate text-xl font-semibold text-primary-foreground">{value}</p>
-      <p className="mt-1 truncate text-xs text-primary-foreground/75">{detail}</p>
-    </div>
-  );
-}
-
-function QueueLineItem({ item }: { item: AdminQueueItem }) {
-  const priorityClasses = {
-    Urgent: "border-rose-500/35 bg-rose-500/12 text-rose-700",
-    High: "border-orange-500/35 bg-orange-500/12 text-orange-700",
-    Normal: "border-blue-500/35 bg-blue-500/12 text-blue-700",
-  }[item.priority];
-
-  return (
-    <div className="rounded-xl border bg-card px-4 py-3 shadow-sm shadow-primary/5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-primary">{item.reference}</p>
-          <p className="text-sm text-foreground">{item.resident}</p>
-        </div>
-        <span
-          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${priorityClasses}`}
-        >
-          {item.priority}
-        </span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <p>{item.service}</p>
-        <p className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-          {item.status}
-        </p>
-      </div>
-    </div>
   );
 }
 

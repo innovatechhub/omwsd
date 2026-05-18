@@ -53,7 +53,6 @@ const requestSchema = z.object({
   governmentIdNumber: z.string().min(3, "Enter the ID number."),
   governmentIdFiles: fileArraySchema,
   assistanceTypeSlug: z.string().min(1, "Select an assistance type."),
-  urgency: z.string().min(1, "Select an urgency level."),
   requestedAmount: z.string(),
   householdSize: z.string(),
   monthlyIncome: z.string(),
@@ -78,7 +77,6 @@ const stepFields: Array<Array<keyof AssistanceRequestFormValues>> = [
   ["governmentIdType", "governmentIdNumber", "governmentIdFiles"],
   [
     "assistanceTypeSlug",
-    "urgency",
     "requestedAmount",
     "householdSize",
     "monthlyIncome",
@@ -89,6 +87,10 @@ const stepFields: Array<Array<keyof AssistanceRequestFormValues>> = [
 ];
 
 type RequestFormValues = z.infer<typeof requestSchema>;
+
+const requestAssistanceServices = publicServices.filter((service) =>
+  ["medical-assistance", "burial-assistance"].includes(service.slug),
+);
 
 export function RequestAssistancePage() {
   const { user, isConfigured } = useAuth();
@@ -114,7 +116,6 @@ export function RequestAssistancePage() {
       governmentIdNumber: "",
       governmentIdFiles: [],
       assistanceTypeSlug: "",
-      urgency: "",
       requestedAmount: "",
       householdSize: "",
       monthlyIncome: "",
@@ -126,7 +127,7 @@ export function RequestAssistancePage() {
 
   const governmentIdFiles = form.watch("governmentIdFiles");
   const supportingDocuments = form.watch("supportingDocuments");
-  const selectedService = publicServices.find(
+  const selectedService = requestAssistanceServices.find(
     (service) => service.slug === form.watch("assistanceTypeSlug"),
   );
   const isSubmitting = form.formState.isSubmitting;
@@ -309,20 +310,11 @@ export function RequestAssistancePage() {
               <Field label="Assistance type" id="assistanceTypeSlug">
                 <Select id="assistanceTypeSlug" {...form.register("assistanceTypeSlug")}>
                   <option value="">Select assistance type</option>
-                  {publicServices.map((service) => (
+                  {requestAssistanceServices.map((service) => (
                     <option key={service.slug} value={service.slug}>
                       {service.title}
                     </option>
                   ))}
-                </Select>
-              </Field>
-              <Field label="Urgency level" id="urgency">
-                <Select id="urgency" {...form.register("urgency")}>
-                  <option value="">Select urgency</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
                 </Select>
               </Field>
               <Field label="Requested amount (optional)" id="requestedAmount">

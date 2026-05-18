@@ -80,18 +80,7 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Reports
-          </p>
-          <h1 className="text-3xl font-semibold">Live admin reporting</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Track application volume, identify high-demand barangays, and export a clean
-            CSV summary for OMSWD reporting.
-          </p>
-        </div>
-
+      <section className="flex flex-wrap justify-end gap-3">
         <div className="grid gap-3 sm:grid-cols-[180px_auto]">
           <Select value={period} onChange={(event) => setPeriod(event.target.value)}>
             <option value="3">Last 3 months</option>

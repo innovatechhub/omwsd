@@ -12,7 +12,6 @@ export interface AssistanceRequestFormValues {
   governmentIdNumber: string;
   governmentIdFiles: File[];
   assistanceTypeSlug: string;
-  urgency: string;
   requestedAmount: string;
   householdSize: string;
   monthlyIncome: string;

@@ -7,6 +7,7 @@ export interface AdminApplicationRecord {
   barangay: string;
   priority: "Normal" | "High" | "Urgent";
   submittedAt: string;
+  submittedAtRaw: string | null;
   remarks: string;
 }
 
@@ -71,4 +72,5 @@ export interface AdminQueueItem {
   service: string;
   status: string;
   priority: "Normal" | "High" | "Urgent";
+  submittedAtRaw: string | null;
 }
