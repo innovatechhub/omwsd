@@ -5,7 +5,6 @@ import { BrandMark } from "@/components/shared/brand-mark";
 import { officeContacts } from "@/features/public";
 
 const quickLinks = [
-  { to: "/about", label: "About OMSWD" },
   { to: "/services", label: "Our Services" },
   { to: "/requirements", label: "Requirements" },
   { to: "/announcements", label: "Announcements" },
@@ -16,14 +15,11 @@ const quickLinks = [
 const serviceLinks = [
   { to: "/services/medical-assistance", label: "Medical Assistance" },
   { to: "/services/burial-assistance", label: "Burial Assistance" },
-  { to: "/services/food-relief", label: "Food Relief" },
-  { to: "/services/educational-assistance", label: "Educational Assistance" },
 ];
 
 const portalLinks = [
   { to: "/register", label: "Create Account" },
   { to: "/login", label: "Resident Sign In" },
-  { to: "/request-assistance", label: "Apply for Assistance" },
   { to: "/privacy-policy", label: "Privacy Policy" },
 ];
 

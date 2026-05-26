@@ -1,6 +1,5 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { motion } from "framer-motion";
-import { BadgeCheck, ShieldCheck, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { BrandMark } from "@/components/shared/brand-mark";
@@ -9,23 +8,13 @@ interface AuthShellProps extends PropsWithChildren {
   eyebrow: string;
   title: string;
   description: string;
-  asideTitle: string;
-  asideDescription: string;
   footer?: ReactNode;
 }
-
-const features = [
-  { icon: Users, label: "Resident Access", desc: "Submit requests, track applications, upload documents." },
-  { icon: ShieldCheck, label: "Staff Access", desc: "Review, verify, and manage welfare cases." },
-  { icon: BadgeCheck, label: "Secure & Role-Based", desc: "Protected access based on your account role." },
-];
 
 export function AuthShell({
   eyebrow,
   title,
   description,
-  asideTitle,
-  asideDescription,
   footer,
   children,
 }: AuthShellProps) {
@@ -57,42 +46,6 @@ export function AuthShell({
           </Link>
         </div>
 
-        <div className="relative space-y-8">
-          <div>
-            <span className="inline-block rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white/70">
-              {eyebrow}
-            </span>
-            <h1 className="mt-4 font-serif text-3xl font-bold leading-tight xl:text-4xl">
-              {asideTitle}
-            </h1>
-            <p className="mt-3 text-sm leading-7 text-white/75">
-              {asideDescription}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {features.map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/8 p-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--landing-highlight)] text-[var(--landing-ink)]">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{label}</p>
-                  <p className="text-xs leading-5 text-white/65">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative">
-          <Link
-            to="/"
-            className="text-sm font-semibold text-white/65 underline-offset-4 hover:text-white hover:underline transition-colors"
-          >
-            ← Return to public website
-          </Link>
-        </div>
       </motion.div>
 
       {/* Right panel — form */}

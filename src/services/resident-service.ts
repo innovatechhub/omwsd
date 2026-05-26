@@ -272,6 +272,7 @@ export async function getResidentPortalSnapshot(): Promise<ResidentPortalSnapsho
   const [
     { data: applicationRows, error: applicationError },
     { data: notificationRows, error: notificationError },
+    { data: residentRow },
   ] = await Promise.all([
     supabase
       .from("applications")
@@ -287,6 +288,11 @@ export async function getResidentPortalSnapshot(): Promise<ResidentPortalSnapsho
       .eq("recipient_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("residents")
+      .select("id")
+      .eq("profile_id", user.id)
+      .maybeSingle(),
   ]);
 
   if (applicationError) {
@@ -303,11 +309,14 @@ export async function getResidentPortalSnapshot(): Promise<ResidentPortalSnapsho
   const unreadNotifications = notifications.filter((notification) => !notification.isRead).length;
   const applicationRow = ((applicationRows ?? []) as Array<Record<string, unknown>>)[0];
 
+  const profileIsComplete = !!residentRow;
+
   if (!applicationRow) {
     return {
       application: null,
       notifications,
       unreadNotifications,
+      profileIsComplete,
       needsActionCount: notifications.filter(
         (notification) =>
           !notification.isRead &&
@@ -406,6 +415,7 @@ export async function getResidentPortalSnapshot(): Promise<ResidentPortalSnapsho
     application,
     notifications,
     unreadNotifications,
+    profileIsComplete,
     needsActionCount:
       (application.requiresAction ? 1 : 0) +
       notifications.filter(

@@ -54,7 +54,7 @@ export async function signUp({ email, password, fullName, redirectTo }: SignUpPa
         data: {
           ...(fullName ? { full_name: fullName } : {}),
           role: "resident",
-          is_active: true,
+          is_active: false,
         },
       },
     }),

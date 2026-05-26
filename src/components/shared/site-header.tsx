@@ -12,7 +12,6 @@ import { signOut } from "@/services/auth-service";
 
 const navigation = [
   { to: "/", label: "Home" },
-  { to: "/about", label: "About" },
   { to: "/services", label: "Services" },
   { to: "/requirements", label: "Requirements" },
   { to: "/faq", label: "FAQ" },

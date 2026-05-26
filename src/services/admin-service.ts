@@ -382,55 +382,82 @@ export async function getAdminApplicationCaseDetails(
 export async function getAdminResidents() {
   assertSupabaseConfigured();
 
-  const { data, error } = await supabase
-    .from("residents")
-    .select(
-      "id, profile_id, contact_number, is_verified, barangays(name), profiles!inner(full_name, is_active)",
-    )
+  // Query all resident profiles first (every registered resident has a profile row)
+  const { data: profileRows, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, is_active, created_at")
+    .eq("role", "resident")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw error;
+  if (profileError) {
+    throw profileError;
   }
 
-  const residentIds = ((data ?? []) as Array<Record<string, unknown>>)
-    .map((item) => String(item.id ?? ""))
+  const profileIds = ((profileRows ?? []) as Array<Record<string, unknown>>)
+    .map((p) => String(p.id ?? ""))
     .filter(Boolean);
 
-  const { data: applicationRows, error: applicationError } = await supabase
-    .from("applications")
-    .select("resident_id");
-
-  if (applicationError) {
-    throw applicationError;
+  if (profileIds.length === 0) {
+    return [];
   }
+
+  // LEFT join: get resident row details for profiles that have completed their profile
+  const { data: residentRows, error: residentError } = await supabase
+    .from("residents")
+    .select("id, profile_id, contact_number, is_verified, barangays(name)")
+    .in("profile_id", profileIds);
+
+  if (residentError) {
+    throw residentError;
+  }
+
+  // Map resident rows by profile_id for O(1) lookup
+  const residentByProfileId = new Map<string, Record<string, unknown>>();
+  for (const row of (residentRows ?? []) as Array<Record<string, unknown>>) {
+    residentByProfileId.set(String(row.profile_id ?? ""), row);
+  }
+
+  // Count applications per resident id
+  const residentIds = Array.from(residentByProfileId.values())
+    .map((r) => String(r.id ?? ""))
+    .filter(Boolean);
 
   const applicationCounts = new Map<string, number>();
 
-  for (const row of (applicationRows ?? []) as Array<Record<string, unknown>>) {
-    const residentId = typeof row.resident_id === "string" ? row.resident_id : null;
+  if (residentIds.length > 0) {
+    const { data: applicationRows, error: applicationError } = await supabase
+      .from("applications")
+      .select("resident_id")
+      .in("resident_id", residentIds);
 
-    if (!residentId || !residentIds.includes(residentId)) {
-      continue;
+    if (applicationError) {
+      throw applicationError;
     }
 
-    applicationCounts.set(residentId, (applicationCounts.get(residentId) ?? 0) + 1);
+    for (const row of (applicationRows ?? []) as Array<Record<string, unknown>>) {
+      const residentId = typeof row.resident_id === "string" ? row.resident_id : null;
+      if (residentId) {
+        applicationCounts.set(residentId, (applicationCounts.get(residentId) ?? 0) + 1);
+      }
+    }
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>).map((item) => {
-    const profile = item.profiles as Record<string, unknown> | null;
-    const barangay = item.barangays as Record<string, unknown> | null;
-    const residentId = String(item.id ?? "");
+  return ((profileRows ?? []) as Array<Record<string, unknown>>).map((profile) => {
+    const profileId = String(profile.id ?? "");
+    const resident = residentByProfileId.get(profileId);
+    const barangay = resident?.barangays as Record<string, unknown> | null;
+    const residentId = resident ? String(resident.id ?? "") : "";
 
     return {
-      id: residentId,
-      profileId: String(item.profile_id ?? ""),
-      name: String(profile?.full_name ?? "Unnamed resident"),
-      status: item.is_verified ? "Verified" : "Pending verification",
-      barangay: String(barangay?.name ?? "Not specified"),
-      account: profile?.is_active === false ? "Suspended" : "Active",
-      contact: String(item.contact_number ?? "No contact number"),
-      referenceCount: applicationCounts.get(residentId) ?? 0,
+      id: residentId || profileId,
+      profileId,
+      name: String(profile.full_name ?? profile.email ?? "Unnamed resident"),
+      status: resident?.is_verified ? "Verified" : "Pending verification",
+      barangay: String(barangay?.name ?? "—"),
+      account: profile.is_active === false ? "Suspended" : "Active",
+      contact: resident ? String(resident.contact_number ?? "—") : "—",
+      referenceCount: residentId ? (applicationCounts.get(residentId) ?? 0) : 0,
+      hasResidentRow: !!resident,
     } satisfies AdminResidentRecord;
   });
 }

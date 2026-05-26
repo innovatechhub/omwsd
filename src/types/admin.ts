@@ -52,6 +52,7 @@ export interface AdminResidentRecord {
   account: "Active" | "Suspended";
   contact: string;
   referenceCount: number;
+  hasResidentRow: boolean;
 }
 
 export interface AdminDashboardMetrics {

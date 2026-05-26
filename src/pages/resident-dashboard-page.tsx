@@ -1,11 +1,11 @@
 import {
   ArrowRight,
-  BellRing,
   CheckCircle2,
   Clock3,
   FileCheck2,
   FileWarning,
   Upload,
+  UserCircle2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -22,32 +22,11 @@ const progressSteps = [
   "Decision and release",
 ];
 
-const quickActions = [
-  {
-    title: "Application details",
-    description: "Review your latest request and case remarks.",
-    to: "/resident/application",
-    icon: FileCheck2,
-  },
-  {
-    title: "Requirement uploads",
-    description: "Submit requested or corrected documents.",
-    to: "/resident/uploads",
-    icon: Upload,
-  },
-  {
-    title: "Notifications",
-    description: "Check reminders and status updates from OMSWD.",
-    to: "/resident/notifications",
-    icon: BellRing,
-  },
-];
-
 export function ResidentDashboardPage() {
   const portalQuery = useResidentPortal();
   const application = portalQuery.data?.application ?? null;
-  const unreadNotifications = portalQuery.data?.unreadNotifications ?? 0;
   const needsActionCount = portalQuery.data?.needsActionCount ?? 0;
+  const profileIsComplete = portalQuery.data?.profileIsComplete ?? true;
 
   if (portalQuery.isLoading) {
     return <ResidentStateCard message="Loading your resident portal data..." />;
@@ -90,6 +69,26 @@ export function ResidentDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {!profileIsComplete && (
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <UserCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-semibold text-amber-900">Complete your profile to get started</p>
+              <p className="mt-0.5 text-sm text-amber-700">
+                Your account is active but your resident profile is not yet filled out. You need to complete it before you can submit an assistance request.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/resident/profile"
+            className="shrink-0 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+          >
+            Complete profile →
+          </Link>
+        </div>
+      )}
+
       <Card className="portal-card border-[var(--portal-outline)] shadow-none">
         <CardHeader>
           <CardTitle>Current application</CardTitle>
@@ -143,7 +142,7 @@ export function ResidentDashboardPage() {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <section>
         <Card className="portal-card border-[var(--portal-outline)] shadow-none">
           <CardHeader>
             <CardTitle>Progress tracker</CardTitle>
@@ -221,39 +220,6 @@ export function ResidentDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
-          <CardHeader>
-            <CardTitle>Quick navigation</CardTitle>
-            <CardDescription>Open commonly used resident pages faster.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {quickActions.map(({ title, description, to, icon: Icon }) => (
-              <Link
-                key={title}
-                to={to}
-                className="flex items-start justify-between gap-3 rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-3 transition-colors hover:bg-[var(--portal-surface-soft)]"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-[var(--portal-surface-soft)]">
-                    <Icon className="h-4 w-4 text-[var(--portal-accent)]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-[var(--portal-ink)]">{title}</p>
-                    <p className="mt-1 text-xs text-[var(--portal-muted)]">{description}</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 shrink-0 text-[var(--portal-muted)]" />
-              </Link>
-            ))}
-
-            <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-3 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
-                Unread notifications
-              </p>
-              <p className="mt-1 text-2xl font-semibold text-[var(--portal-ink)]">{unreadNotifications}</p>
-            </div>
-          </CardContent>
-        </Card>
       </section>
     </div>
   );

@@ -45,11 +45,19 @@ export function LoginPage() {
       const response = await signInWithPassword(values);
       await refreshSession();
 
-      const redirect = searchParams.get("redirect");
       const profile = await getProfile(response.user ?? null);
       const nextRole =
         profile?.role ??
         ((response.user?.user_metadata?.role as AppRole | undefined) ?? role);
+
+      if (nextRole === "resident" && profile?.is_active === false) {
+        await import("@/services/auth-service").then((m) => m.signOut());
+        await refreshSession();
+        setSubmitError("Your account is pending admin approval. Please wait for an administrator to activate your account.");
+        return;
+      }
+
+      const redirect = searchParams.get("redirect");
       const fallbackPath = getDefaultRouteForAuthenticatedUser(nextRole);
 
       toast.success("Signed in successfully.");
@@ -67,8 +75,6 @@ export function LoginPage() {
       eyebrow="Authentication"
       title="Sign in to your account"
       description="Use your resident or staff credentials to continue to the appropriate portal."
-      asideTitle="Protected access for resident and staff workflows."
-      asideDescription="Authentication is now wired into the OMSWD frontend foundation. Residents and staff are routed to separate protected areas based on role."
       footer={
         <p className="text-sm text-muted-foreground">
           No account yet?{" "}

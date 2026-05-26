@@ -59,8 +59,6 @@ export function ResetPasswordPage() {
       eyebrow="Password Reset"
       title="Set a new password"
       description="Use the recovery session from your email link to choose a new password for your account."
-      asideTitle="Complete account recovery inside the OMSWD portal."
-      asideDescription="If you opened this page from a valid recovery link, Supabase should establish a recovery session so the password can be changed securely."
       footer={
         <p className="text-sm text-muted-foreground">
           Need a new link?{" "}

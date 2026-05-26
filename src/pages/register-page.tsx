@@ -48,20 +48,14 @@ export function RegisterPage() {
 
     try {
       const redirectTo = `${window.location.origin}/reset-password`;
-      const result = await signUp({
+      await signUp({
         email: values.email,
         password: values.password,
         fullName: values.fullName,
         redirectTo,
       });
 
-      const requiresEmailConfirmation = !result.session;
-      toast.success(
-        requiresEmailConfirmation
-          ? "Account created. Check your email to confirm your registration."
-          : "Resident account created successfully.",
-      );
-
+      toast.success("Registration submitted. Your account is pending admin approval before you can sign in.");
       navigate("/login", { replace: true });
     } catch (error) {
       const message =
@@ -75,9 +69,7 @@ export function RegisterPage() {
     <AuthShell
       eyebrow="Resident Registration"
       title="Create a resident account"
-      description="New self-service registrations are assigned the resident role and can be routed into the resident portal after sign-in."
-      asideTitle="Start your assistance request journey with a verified account."
-      asideDescription="Residents can register here before the request intake and document submission modules are built out further."
+      description="Submit your registration for admin review. Your account will be activated once an administrator approves it."
       footer={
         <p className="text-sm text-muted-foreground">
           Already registered?{" "}

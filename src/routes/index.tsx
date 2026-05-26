@@ -9,7 +9,6 @@ import { AdminApplicationsPage } from "@/pages/admin-applications-page";
 import { AdminDashboardPage } from "@/pages/admin-dashboard-page";
 import { AdminResidentsPage } from "@/pages/admin-residents-page";
 import { AnnouncementsPage } from "@/pages/announcements-page";
-import { AboutPage } from "@/pages/about-page";
 import { ContactPage } from "@/pages/contact-page";
 import { FaqPage } from "@/pages/faq-page";
 import { ForgotPasswordPage } from "@/pages/forgot-password-page";
@@ -40,7 +39,6 @@ const router = createBrowserRouter([
         element: <PublicLayout />,
         children: [
           { path: "/", element: <HomePage /> },
-          { path: "/about", element: <AboutPage /> },
           { path: "/services", element: <ServicesPage /> },
           { path: "/services/:serviceSlug", element: <ServiceDetailsPage /> },
           { path: "/requirements", element: <RequirementsPage /> },

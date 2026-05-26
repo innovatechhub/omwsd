@@ -80,4 +80,5 @@ export interface ResidentPortalSnapshot {
   notifications: ResidentNotification[];
   unreadNotifications: number;
   needsActionCount: number;
+  profileIsComplete: boolean;
 }

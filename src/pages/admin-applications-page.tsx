@@ -523,59 +523,45 @@ export function AdminApplicationsPage() {
       <Modal
         open={selectedApplication !== null}
         onClose={closeCaseModal}
-        title="Case review form"
-        description="Update status, verify requirements, and review case history."
+        title="Case review"
+        description={selectedApplication ? `${selectedApplication.reference} · ${selectedApplication.resident}` : ""}
         size="xl"
         footer={
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeCaseModal}>
               Cancel
             </Button>
             <Button type="button" onClick={() => void handleSaveRemarks()} disabled={isSaving}>
+              {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
               Save changes
             </Button>
           </div>
         }
       >
         {selectedApplication ? (
-          <div className="space-y-5">
-            <div className="rounded-xl border bg-muted/20 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {selectedApplication.reference}
-                  </p>
-                  <p className="mt-1 text-lg font-semibold">{selectedApplication.resident}</p>
-                  <p className="text-sm text-muted-foreground">{selectedApplication.assistance}</p>
-                </div>
+          <div className="space-y-6">
+            {/* Case summary */}
+            <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">{selectedApplication.resident}</p>
+                <p className="text-xs text-muted-foreground">{selectedApplication.assistance} · {selectedApplication.barangay}</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{selectedApplication.submittedAt}</span>
                 <Badge variant={getStatusBadgeVariant(selectedApplication.status)}>
                   {selectedApplication.status}
                 </Badge>
               </div>
-              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-                <DetailRow label="Submitted" value={selectedApplication.submittedAt} />
-                <DetailRow label="Barangay" value={selectedApplication.barangay} />
-                <DetailRow
-                  label="Age"
-                  value={(() => {
-                    const sla = getSlaDaysClass(selectedApplication.submittedAtRaw);
-                    return sla ? `${sla.label} old` : "—";
-                  })()}
-                />
-              </div>
             </div>
 
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="case-status">
-                  Case status
-                </label>
+            {/* Status + remarks */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="case-status">Status</label>
                 <Select
                   id="case-status"
                   value={statusDraft}
-                  onChange={(event) =>
-                    setStatusDraft(event.target.value as AdminApplicationRecord["status"])
-                  }
+                  onChange={(e) => setStatusDraft(e.target.value as AdminApplicationRecord["status"])}
                 >
                   <option value="Pending verification">Pending verification</option>
                   <option value="Under review">Under review</option>
@@ -584,214 +570,183 @@ export function AdminApplicationsPage() {
                   <option value="Completed">Completed</option>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="case-remarks">
-                Reviewer remarks
-              </label>
-              <Textarea
-                id="case-remarks"
-                value={noteDraft}
-                onChange={(event) => setNoteDraft(event.target.value)}
-                placeholder="Add reviewer notes, correction requests, or release instructions."
-                className="min-h-[100px]"
-              />
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-sm font-medium" htmlFor="case-remarks">Reviewer remarks</label>
+                <Textarea
+                  id="case-remarks"
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Notes, correction requests, or release instructions."
+                  className="min-h-[80px] resize-none"
+                />
+              </div>
             </div>
 
             {statusDraft === "For correction" && (
-              <div className="space-y-2 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                <label className="text-sm font-semibold text-yellow-800" htmlFor="correction-items">
-                  Items the resident needs to correct
+              <div className="space-y-1.5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+                <label className="text-sm font-medium text-amber-900" htmlFor="correction-items">
+                  Items to correct
                 </label>
-                <p className="text-xs text-yellow-700">These will be appended to remarks and sent as a notification.</p>
+                <p className="text-xs text-amber-700">Appended to remarks and sent as a notification.</p>
                 <Textarea
                   id="correction-items"
                   value={correctionItems}
-                  onChange={(event) => setCorrectionItems(event.target.value)}
-                  placeholder="List what the resident needs to fix or resubmit (one per line)."
-                  className="min-h-[80px] border-yellow-200 bg-white"
+                  onChange={(e) => setCorrectionItems(e.target.value)}
+                  placeholder="One item per line."
+                  className="min-h-[72px] resize-none border-amber-200 bg-white"
                 />
               </div>
             )}
 
+            {/* Requirements */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Requirement Checklist
-              </h3>
+              <p className="text-sm font-medium">Requirements</p>
               {caseDetailsQuery.isLoading ? (
-                <div className="rounded-md border border-dashed bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                  Loading requirement records...
-                </div>
-              ) : caseDetailsQuery.error instanceof Error ? (
-                <div className="rounded-md border border-dashed bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                  {caseDetailsQuery.error.message}
+                <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                  <LoaderCircle className="h-4 w-4 animate-spin" /> Loading...
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <tr>
-                      <TableHead>Requirement</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Files</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </tr>
-                  </TableHeader>
-                  <TableBody>
-                    {caseDetailsQuery.data?.requirements.length ? (
-                      caseDetailsQuery.data.requirements.map((requirement) => (
-                        <TableRow key={requirement.id}>
-                          <TableCell className="font-medium">{requirement.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{requirement.statusLabel}</Badge>
-                          </TableCell>
-                          <TableCell>{requirement.documents.length}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {requirement.remarks ??
-                              requirement.description ??
-                              "No requirement remarks yet."}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                title="Verify"
-                                className="h-7 w-7 p-0 text-green-600 hover:border-green-400 hover:bg-green-50"
-                                onClick={() => void handleRequirementAction(requirement, "approved")}
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                title="Reject"
-                                className="h-7 w-7 p-0 text-red-600 hover:border-red-400 hover:bg-red-50"
-                                onClick={() => void handleRequirementAction(requirement, "rejected")}
-                              >
-                                <XCircle className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                title="Needs resubmission"
-                                className="h-7 w-7 p-0 text-yellow-600 hover:border-yellow-400 hover:bg-yellow-50"
-                                onClick={() => void handleRequirementAction(requirement, "needs_resubmission")}
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <tr>
+                        <TableHead>Requirement</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="hidden sm:table-cell">Files</TableHead>
+                        <TableHead className="hidden md:table-cell">Remarks</TableHead>
+                        <TableHead className="w-[100px] text-right">Actions</TableHead>
+                      </tr>
+                    </TableHeader>
+                    <TableBody>
+                      {caseDetailsQuery.data?.requirements.length ? (
+                        caseDetailsQuery.data.requirements.map((req) => (
+                          <TableRow key={req.id}>
+                            <TableCell className="font-medium">{req.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{req.statusLabel}</Badge>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">{req.documents.length}</TableCell>
+                            <TableCell className="hidden max-w-[180px] truncate text-muted-foreground md:table-cell">
+                              {req.remarks ?? req.description ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button type="button" size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
+                                  title="Approve"
+                                  onClick={() => void handleRequirementAction(req, "approved")}>
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-red-600 hover:bg-red-50"
+                                  title="Reject"
+                                  onClick={() => void handleRequirementAction(req, "rejected")}>
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-amber-600 hover:bg-amber-50"
+                                  title="Needs resubmission"
+                                  onClick={() => void handleRequirementAction(req, "needs_resubmission")}>
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                            No requirements linked yet.
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                          No requirement records are linked yet.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </div>
 
+            {/* Documents */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Submitted Documents
-              </h3>
+              <p className="text-sm font-medium">Submitted documents</p>
               {caseDetailsQuery.isLoading ? (
-                <div className="rounded-md border border-dashed bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                  Loading submitted files...
-                </div>
-              ) : caseDetailsQuery.error instanceof Error ? (
-                <div className="rounded-md border border-dashed bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                  {caseDetailsQuery.error.message}
+                <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                  <LoaderCircle className="h-4 w-4 animate-spin" /> Loading...
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <tr>
-                      <TableHead>File</TableHead>
-                      <TableHead>Linked requirement</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Uploaded</TableHead>
-                      <TableHead className="w-[90px] text-right">Action</TableHead>
-                    </tr>
-                  </TableHeader>
-                  <TableBody>
-                    {caseDetailsQuery.data?.documents.length ? (
-                      caseDetailsQuery.data.documents.map((document) => (
-                        <TableRow key={document.id}>
-                          <TableCell className="font-medium">{document.fileName}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {document.applicationRequirementId
-                              ? requirementNameByRecordId.get(document.applicationRequirementId) ??
-                                "Linked requirement"
-                              : "General supporting document"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{document.statusLabel}</Badge>
-                          </TableCell>
-                          <TableCell>{document.createdAtLabel}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => void handleViewDocument(document)}
-                              disabled={viewingDocumentId === document.id}
-                            >
-                              {viewingDocumentId === document.id ? (
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                              View
-                            </Button>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <tr>
+                        <TableHead>File</TableHead>
+                        <TableHead className="hidden sm:table-cell">Requirement</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="hidden sm:table-cell">Uploaded</TableHead>
+                        <TableHead className="w-[80px] text-right">View</TableHead>
+                      </tr>
+                    </TableHeader>
+                    <TableBody>
+                      {caseDetailsQuery.data?.documents.length ? (
+                        caseDetailsQuery.data.documents.map((doc) => (
+                          <TableRow key={doc.id}>
+                            <TableCell className="max-w-[160px] truncate font-medium">{doc.fileName}</TableCell>
+                            <TableCell className="hidden text-muted-foreground sm:table-cell">
+                              {doc.applicationRequirementId
+                                ? (requirementNameByRecordId.get(doc.applicationRequirementId) ?? "Linked")
+                                : "General"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{doc.statusLabel}</Badge>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">{doc.createdAtLabel}</TableCell>
+                            <TableCell className="text-right">
+                              <Button type="button" variant="ghost" size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => void handleViewDocument(doc)}
+                                disabled={viewingDocumentId === doc.id}>
+                                {viewingDocumentId === doc.id
+                                  ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                                  : <Eye className="h-3.5 w-3.5" />}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                            No documents submitted yet.
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                          No submitted documents are linked to this case.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </div>
 
+            {/* Case history */}
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => setHistoryExpanded((prev) => !prev)}
-                className="flex w-full items-center justify-between rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--portal-ink)] hover:bg-white transition-colors"
+                onClick={() => setHistoryExpanded((p) => !p)}
+                className="flex w-full items-center justify-between rounded-md border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/50"
               >
-                <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Case History</span>
-                {historyExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
+                <span>Case history</span>
+                {historyExpanded
+                  ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </button>
               {historyExpanded && (
-                <div className="rounded-xl border border-[var(--portal-outline)]">
+                <div className="rounded-md border">
                   {statusHistoryQuery.isLoading ? (
-                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                      Loading case history...
+                    <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
+                      <LoaderCircle className="h-4 w-4 animate-spin" /> Loading history...
                     </div>
                   ) : statusHistoryQuery.data?.length ? (
                     <Table>
                       <TableHeader>
                         <tr>
-                          <TableHead>Date</TableHead>
+                          <TableHead className="w-[130px]">Date</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Remarks</TableHead>
                         </tr>
@@ -799,19 +754,15 @@ export function AdminApplicationsPage() {
                       <TableBody>
                         {statusHistoryQuery.data.map((entry) => (
                           <TableRow key={entry.id}>
-                            <TableCell className="whitespace-nowrap">{entry.createdAtLabel}</TableCell>
+                            <TableCell className="whitespace-nowrap text-muted-foreground">{entry.createdAtLabel}</TableCell>
                             <TableCell className="font-medium">{entry.statusLabel}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {entry.remarks ?? "No remarks recorded."}
-                            </TableCell>
+                            <TableCell className="text-muted-foreground">{entry.remarks ?? "—"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   ) : (
-                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                      No status history recorded for this case yet.
-                    </div>
+                    <p className="px-4 py-4 text-sm text-muted-foreground">No history recorded yet.</p>
                   )}
                 </div>
               )}

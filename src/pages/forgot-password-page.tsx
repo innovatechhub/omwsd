@@ -52,8 +52,6 @@ export function ForgotPasswordPage() {
       eyebrow="Password Recovery"
       title="Request a password reset"
       description="Enter the email address linked to your OMSWD account and the system will send a recovery link."
-      asideTitle="Secure recovery for resident and staff accounts."
-      asideDescription="Password reset uses Supabase recovery links and routes the user back into the reset screen in this Vite app."
       footer={
         <p className="text-sm text-muted-foreground">
           Remembered it?{" "}

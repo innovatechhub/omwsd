@@ -47,7 +47,11 @@ export function AdminResidentsPage() {
         resident.contact.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesVerification =
-        verificationFilter === "all" || resident.status.toLowerCase() === verificationFilter;
+        verificationFilter === "all"
+          ? true
+          : verificationFilter === "pending approval"
+          ? resident.account === "Suspended"
+          : resident.status.toLowerCase() === verificationFilter;
 
       return matchesSearch && matchesVerification;
     });
@@ -76,6 +80,7 @@ export function AdminResidentsPage() {
 
   const verifiedCount = residents.filter((resident) => resident.status === "Verified").length;
   const activeAccounts = residents.filter((resident) => resident.account === "Active").length;
+  const pendingApproval = residents.filter((resident) => resident.account === "Suspended").length;
 
   async function handleVerifyResident(resident: AdminResidentRecord) {
     try {
@@ -86,6 +91,20 @@ export function AdminResidentsPage() {
       toast.success("Resident marked as verified.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to verify resident.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleApproveAccount(resident: AdminResidentRecord) {
+    try {
+      setIsSaving(true);
+      await setResidentAccountState(resident.profileId, true);
+      await residentsQuery.refetch();
+      toast.success(`${resident.name}'s account approved and activated.`);
+      closeResidentModal();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to approve account.");
     } finally {
       setIsSaving(false);
     }
@@ -149,7 +168,7 @@ export function AdminResidentsPage() {
         <SummaryCard label="Total residents" value={String(residents.length)} />
         <SummaryCard label="Verified" value={String(verifiedCount)} />
         <SummaryCard label="Active accounts" value={String(activeAccounts)} />
-        <SummaryCard label="Suspended" value={String(residents.length - activeAccounts)} />
+        <SummaryCard label="Pending approval" value={String(pendingApproval)} highlight={pendingApproval > 0} />
       </section>
 
       <Card>
@@ -172,6 +191,7 @@ export function AdminResidentsPage() {
             onChange={(event) => setVerificationFilter(event.target.value)}
           >
             <option value="all">All residents</option>
+            <option value="pending approval">Pending approval</option>
             <option value="verified">Verified</option>
             <option value="pending verification">Pending verification</option>
           </Select>
@@ -216,7 +236,7 @@ export function AdminResidentsPage() {
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                       <DetailRow label="Barangay" value={resident.barangay} />
-                      <DetailRow label="Account" value={resident.account} />
+                      <DetailRow label="Account" value={resident.account === "Suspended" ? "Pending approval" : resident.account} />
                       <DetailRow label="Requests" value={String(resident.referenceCount)} />
                       <DetailRow label="Status" value={resident.status} />
                     </div>
@@ -252,7 +272,11 @@ export function AdminResidentsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>{resident.barangay}</TableCell>
-                        <TableCell>{resident.account}</TableCell>
+                        <TableCell>
+                          <span className={resident.account === "Suspended" ? "text-amber-700 font-medium" : ""}>
+                            {resident.account === "Suspended" ? "Pending approval" : resident.account}
+                          </span>
+                        </TableCell>
                         <TableCell>{resident.contact}</TableCell>
                         <TableCell className="font-medium text-primary">
                           {resident.referenceCount}
@@ -268,7 +292,7 @@ export function AdminResidentsPage() {
                               {
                                 label: "Quick verify",
                                 icon: <UserRoundCheck className="h-4 w-4" />,
-                                disabled: isSaving || resident.status === "Verified",
+                                disabled: isSaving || resident.status === "Verified" || !resident.hasResidentRow,
                                 onSelect: () => void handleVerifyResident(resident),
                               },
                             ]}
@@ -346,53 +370,85 @@ export function AdminResidentsPage() {
       >
         {selectedResident ? (
           <div className="space-y-5">
-            <div className="rounded-xl border bg-muted/20 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            {selectedResident.account === "Suspended" && (
+              <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span className="mt-0.5 shrink-0 font-bold">!</span>
                 <div>
-                  <p className="text-lg font-semibold">{selectedResident.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedResident.contact}</p>
+                  <p className="font-medium">Account pending approval</p>
+                  <p className="text-amber-700">This resident registered but cannot sign in until their account is approved.</p>
                 </div>
+              </div>
+            )}
+
+            {!selectedResident.hasResidentRow && (
+              <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                <span className="mt-0.5 shrink-0 font-bold">i</span>
+                <div>
+                  <p className="font-medium">Profile not yet completed</p>
+                  <p className="text-blue-700">This resident has registered but has not filled out their full profile yet. Verification will be available once they complete it.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3">
+              <div>
+                <p className="font-medium">{selectedResident.name}</p>
+                <p className="text-sm text-muted-foreground">{selectedResident.contact} · {selectedResident.barangay}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={selectedResident.account === "Active" ? "secondary" : "outline"}>
+                  {selectedResident.account === "Suspended" ? "Pending approval" : "Active"}
+                </Badge>
                 <Badge variant={selectedResident.status === "Verified" ? "secondary" : "outline"}>
                   {selectedResident.status}
                 </Badge>
               </div>
-              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-                <DetailRow label="Barangay" value={selectedResident.barangay} />
-                <DetailRow label="Account" value={selectedResident.account} />
-                <DetailRow label="Linked requests" value={String(selectedResident.referenceCount)} />
-              </div>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-3">
-              <Button
-                type="button"
-                disabled={isSaving || selectedResident.status === "Verified"}
-                onClick={() => void handleVerifyResident(selectedResident)}
-              >
-                <UserRoundCheck className="h-4 w-4" />
-                Verify resident
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isSaving}
-                onClick={() => void handleToggleAccount(selectedResident)}
-              >
-                <UserMinus className="h-4 w-4" />
-                {selectedResident.account === "Active" ? "Suspend account" : "Reactivate account"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setFollowUpResidentId(selectedResident.id);
-                  setFollowUpMessage("");
-                  closeResidentModal();
-                }}
-              >
-                <Send className="h-4 w-4" />
-                Send follow-up
-              </Button>
+              {selectedResident.account === "Suspended" ? (
+                <Button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void handleApproveAccount(selectedResident)}
+                  className="sm:col-span-3"
+                >
+                  <UserRoundCheck className="h-4 w-4" />
+                  Approve &amp; activate account
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    disabled={isSaving || selectedResident.status === "Verified" || !selectedResident.hasResidentRow}
+                    onClick={() => void handleVerifyResident(selectedResident)}
+                  >
+                    <UserRoundCheck className="h-4 w-4" />
+                    Verify resident
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSaving}
+                    onClick={() => void handleToggleAccount(selectedResident)}
+                  >
+                    <UserMinus className="h-4 w-4" />
+                    Suspend account
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setFollowUpResidentId(selectedResident.id);
+                      setFollowUpMessage("");
+                      closeResidentModal();
+                    }}
+                  >
+                    <Send className="h-4 w-4" />
+                    Send follow-up
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         ) : null}
@@ -401,14 +457,14 @@ export function AdminResidentsPage() {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <Card>
+    <Card className={highlight ? "border-amber-300 bg-amber-50" : undefined}>
       <CardContent className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${highlight ? "text-amber-700" : "text-muted-foreground"}`}>
           {label}
         </p>
-        <p className="mt-1 text-2xl font-semibold">{value}</p>
+        <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-amber-900" : ""}`}>{value}</p>
       </CardContent>
     </Card>
   );

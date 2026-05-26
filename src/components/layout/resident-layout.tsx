@@ -32,6 +32,7 @@ export function ResidentLayout() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const portalQuery = useResidentPortal();
+  const profileIsComplete = portalQuery.data?.profileIsComplete ?? true;
 
   async function handleSignOut() {
     try {
@@ -98,7 +99,10 @@ export function ResidentLayout() {
                   }
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span>{label}</span>
+                  <span className="flex-1">{label}</span>
+                  {to === "/resident/profile" && !profileIsComplete && (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" title="Profile incomplete" />
+                  )}
                 </NavLink>
               ))}
             </nav>
