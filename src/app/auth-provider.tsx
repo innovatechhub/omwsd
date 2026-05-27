@@ -7,8 +7,20 @@ import { queryKeys } from "@/lib/query-keys";
 import { supabase } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { AuthContextValue } from "@/types/auth";
+import type { AppRole } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const appRoles: AppRole[] = ["resident", "admin", "super_admin", "social_worker"];
+
+function getRoleFromSessionMetadata(session: AuthContextValue["session"]): AppRole | null {
+  const metadataRole = session?.user?.user_metadata?.role;
+
+  if (typeof metadataRole !== "string") {
+    return null;
+  }
+
+  return appRoles.includes(metadataRole as AppRole) ? (metadataRole as AppRole) : null;
+}
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
@@ -79,7 +91,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     session,
     user: session?.user ?? null,
     profile: profileQuery.data ?? null,
-    role: profileQuery.data?.role ?? null,
+    role: profileQuery.data?.role ?? getRoleFromSessionMetadata(session),
     isConfigured: isSupabaseConfigured,
     isLoading: isBootstrapping || profileQuery.isLoading,
     error:

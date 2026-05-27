@@ -4,6 +4,7 @@ import { uploadFile } from "@/services/storage-service";
 import type {
   AssistanceRequestFormValues,
   AssistanceRequestSubmissionResult,
+  ResidentAssistanceRequestInput,
 } from "@/types/application";
 
 function parseNumber(value: string) {
@@ -273,4 +274,112 @@ export async function createAssistanceRequest(
     applicationId,
     referenceNumber,
   };
+}
+
+export async function createResidentAssistanceRequest(
+  input: ResidentAssistanceRequestInput,
+): Promise<AssistanceRequestSubmissionResult> {
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY first.",
+    );
+  }
+
+  const user = await requireAuthenticatedUser();
+
+  // Fetch existing profile + resident data so the resident doesn't re-enter it
+  const [{ data: profileRow }, { data: residentRow }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("email, full_name, phone_number, barangay, municipality")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("residents")
+      .select("id, birth_date, sex, civil_status, address_line, household_size, monthly_income")
+      .eq("profile_id", user.id)
+      .maybeSingle(),
+  ]);
+
+  const profile = (profileRow ?? {}) as Record<string, unknown>;
+  const resident = (residentRow ?? {}) as Record<string, unknown>;
+
+  const residentId = typeof resident.id === "string" ? resident.id : null;
+  if (!residentId) {
+    throw new Error("Resident profile not found. Please complete your profile before submitting.");
+  }
+
+  const referenceNumber = generateReferenceNumber();
+
+  const { data: assistanceType, error: assistanceTypeError } = await supabase
+    .from("assistance_types")
+    .select("id")
+    .eq("slug", input.assistanceTypeSlug)
+    .maybeSingle();
+
+  if (assistanceTypeError) throw assistanceTypeError;
+  if (!assistanceType) throw new Error("Selected assistance type could not be found.");
+
+  const householdSize = input.householdSize
+    ? parseNumber(input.householdSize) ?? parseNullableNumber(resident.household_size)
+    : parseNullableNumber(resident.household_size);
+
+  const monthlyIncome = input.monthlyIncome
+    ? parseNumber(input.monthlyIncome) ?? parseNullableNumber(resident.monthly_income)
+    : parseNullableNumber(resident.monthly_income);
+
+  const { data: application, error: applicationError } = await supabase
+    .from("applications")
+    .insert({
+      reference_number: referenceNumber,
+      applicant_profile_id: user.id,
+      resident_id: residentId,
+      assistance_type_id: (assistanceType as Record<string, unknown>).id,
+      status: "pending_verification",
+      urgency: "medium",
+      requested_amount: parseNumber(input.requestedAmount),
+      request_reason: input.requestReason,
+      applicant_full_name: typeof profile.full_name === "string" ? profile.full_name : "",
+      applicant_email: typeof profile.email === "string" ? profile.email : user.email ?? "",
+      contact_number: typeof profile.phone_number === "string" ? profile.phone_number : "",
+      birth_date: typeof resident.birth_date === "string" ? resident.birth_date : null,
+      sex: typeof resident.sex === "string" ? resident.sex : null,
+      civil_status: typeof resident.civil_status === "string" ? resident.civil_status : null,
+      address_line: typeof resident.address_line === "string" ? resident.address_line : "",
+      applicant_barangay: typeof profile.barangay === "string" ? profile.barangay : "",
+      applicant_municipality: typeof profile.municipality === "string" ? profile.municipality : "Pandan",
+      household_size: householdSize,
+      monthly_income: monthlyIncome,
+      consent_accepted: input.consentAccepted,
+    })
+    .select("id")
+    .single();
+
+  if (applicationError) throw applicationError;
+
+  const applicationId = (application as Record<string, unknown>).id as string;
+  await seedApplicationRequirements(applicationId, (assistanceType as Record<string, unknown>).id as string);
+
+  await uploadDocuments(user.id, referenceNumber, applicationId, input.supportingDocuments, "application-documents");
+
+  const { error: statusError } = await supabase.from("status_histories").insert({
+    application_id: applicationId,
+    previous_status: null,
+    new_status: "pending_verification",
+    changed_by: user.id,
+    remarks: "Application submitted through the resident portal.",
+  });
+
+  if (statusError) throw statusError;
+
+  return { applicationId, referenceNumber };
+}
+
+function parseNullableNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }

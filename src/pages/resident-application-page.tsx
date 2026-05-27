@@ -1,30 +1,53 @@
-import { ArrowRight, Clock3, FileText, ListChecks, Printer, ShieldCheck, Upload, Wallet } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  Clock3,
+  Eye,
+  FilePlus2,
+  FileText,
+  ListChecks,
+  ShieldCheck,
+  Upload,
+} from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ResidentPageHeader } from "@/components/resident/resident-page-header";
+import { ResidentRequestAssistanceForm } from "@/components/resident/resident-request-assistance-form";
 import { ResidentStateCard } from "@/components/resident/resident-state-card";
 import { ResidentTableSkeleton } from "@/components/resident/resident-table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
+import { queryKeys } from "@/lib/query-keys";
 
 type DetailsTab = "history" | "requirements" | "documents";
 
-const progressSteps = [
-  "Request submitted",
-  "Initial verification",
-  "Document review",
-  "Decision and release",
-];
-
 export function ResidentApplicationPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
   const portalQuery = useResidentPortal();
   const application = portalQuery.data?.application ?? null;
+
   const [activeTab, setActiveTab] = useState<DetailsTab>("history");
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
+  useEffect(() => {
+    const openRequest = searchParams.get("request");
+    if (openRequest === "1" || openRequest === "new") {
+      setIsRequestModalOpen(true);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("request");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   if (portalQuery.isLoading) {
     return <ResidentApplicationLoadingState />;
@@ -34,165 +57,131 @@ export function ResidentApplicationPage() {
     return <ResidentStateCard message={portalQuery.error.message} />;
   }
 
-  if (!application) {
-    return (
-      <div className="space-y-6">
-        <ResidentPageHeader eyebrow="My Application" title="Case history and remarks" />
-        <ResidentStateCard
-          title="No resident application found"
-          description="This portal account does not have a submitted assistance request yet."
-          message="Submit a request first to start tracking status updates, remarks, requirements, and uploaded documents in this page."
-          action={
-            <Button className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]" asChild>
-              <Link to="/request-assistance">
-                Submit a request
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
-
-  const requirementItemsNeedingAttention = application.requirements.filter((requirement) =>
-    ["pending", "rejected", "needs_resubmission"].includes(requirement.status),
-  ).length;
-
-  const nextStepLabel = (() => {
-    if (application.requiresAction) {
-      return "Review staff remarks and upload any requested files.";
-    }
-
-    if (application.status === "pending_verification") {
-      return "Your request is queued for initial validation.";
-    }
-
-    if (application.status === "under_review") {
-      return "Your request is now in review. Monitor updates in this page.";
-    }
-
-    if (application.status === "approved" || application.status === "completed") {
-      return "No additional resident action is currently required.";
-    }
-
-    return "Keep this page checked for new status updates.";
-  })();
+  const requirementItemsNeedingAttention =
+    application?.requirements.filter((requirement) =>
+      ["pending", "rejected", "needs_resubmission"].includes(requirement.status),
+    ).length ?? 0;
 
   return (
     <div className="space-y-6">
       <ResidentPageHeader
         eyebrow="My Application"
-        title="Case history and remarks"
-        chips={["Status History", "Requirement Tracker"]}
+        title="Application records"
+        description="View your submitted request in a table and open details when needed."
+        chips={["Case Tracking", "Resident Actions"]}
       />
 
       <Card className="portal-card border-[var(--portal-outline)] shadow-none">
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle>Reference {application.referenceNumber}</CardTitle>
-              <CardDescription>{application.assistanceName}</CardDescription>
-            </div>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>My application table</CardTitle>
+            <CardDescription>
+              Use the action button to open complete case details.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+            onClick={() => setIsRequestModalOpen(true)}
+          >
+            <FilePlus2 className="h-4 w-4" />
+            Request assistance
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Submitted</TableHead>
+                <TableHead>Reviewed</TableHead>
+                <TableHead className="w-[140px] text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {application ? (
+                <TableRow>
+                  <TableCell className="font-medium text-[var(--portal-ink)]">
+                    {application.referenceNumber}
+                  </TableCell>
+                  <TableCell>{application.assistanceName}</TableCell>
+                  <TableCell>
+                    <Badge variant={application.requiresAction ? "secondary" : "outline"}>
+                      {application.statusLabel}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{application.submittedAtLabel}</TableCell>
+                  <TableCell>{application.reviewedAtLabel ?? "Pending review"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+                      onClick={() => setIsDetailsModalOpen(true)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      View details
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                    No application found yet. Use the Request assistance button to start.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Modal
+        open={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={
+          application
+            ? `Application details - ${application.referenceNumber}`
+            : "Application details"
+        }
+        description="Full case information, status history, requirements, and uploaded documents."
+        size="xl"
+      >
+        {application ? (
+          <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{application.assistanceName}</Badge>
               <Badge variant={application.requiresAction ? "secondary" : "outline"}>
                 {application.statusLabel}
               </Badge>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-3">
-            <ApplicationMetaCard
-              icon={ShieldCheck}
-              label="Current status"
-              value={application.statusLabel}
-              detail={
-                application.adminRemarks
-                  ? `Staff remarks: ${application.adminRemarks}`
-                  : "No staff remarks have been added yet."
-              }
-            />
-            <ApplicationMetaCard
-              icon={FileText}
-              label="Submitted"
-              value={application.submittedAtLabel}
-              detail={
-                application.reviewedAtLabel
-                  ? `Reviewed ${application.reviewedAtLabel}`
-                  : "Review is still pending."
-              }
-            />
-            <ApplicationMetaCard
-              icon={Wallet}
-              label="Requested amount"
-              value={application.requestedAmountLabel}
-              detail={application.urgencyLabel}
-            />
-          </div>
 
-          <div className="rounded-xl border border-primary/10 bg-muted/20 px-4 py-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Progress tracker
-              </p>
-              <p className="text-sm text-muted-foreground">Next step: {nextStepLabel}</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <ApplicationMetaCard
+                icon={ShieldCheck}
+                label="Current status"
+                value={application.statusLabel}
+                detail={
+                  application.adminRemarks
+                    ? `Staff remarks: ${application.adminRemarks}`
+                    : "No staff remarks have been added yet."
+                }
+              />
+              <ApplicationMetaCard
+                icon={FileText}
+                label="Submitted"
+                value={application.submittedAtLabel}
+                detail={
+                  application.reviewedAtLabel
+                    ? `Reviewed ${application.reviewedAtLabel}`
+                    : "Review is still pending."
+                }
+              />
             </div>
-            <div className="grid gap-2 md:grid-cols-4">
-              {progressSteps.map((step, index) => {
-                const isComplete = index < application.progressStep;
-                const isCurrent = index === application.progressStep;
 
-                return (
-                  <div
-                    key={step}
-                    className={[
-                      "rounded-lg border px-3 py-3",
-                      isCurrent ? "border-primary/30 bg-primary/5" : "bg-background",
-                    ].join(" ")}
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      Step {index + 1}
-                    </p>
-                    <p className="mt-1 text-sm font-medium">{step}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {isComplete ? "Completed" : isCurrent ? "Current step" : "Upcoming"}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]" asChild>
-              <Link to="/resident/uploads">
-                Open upload center
-                <Upload className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]" asChild>
-              <Link to="/resident/notifications">
-                Open notifications
-                <Clock3 className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
-              onClick={() => window.print()}
-            >
-              <Printer className="h-4 w-4" />
-              Print / Save PDF
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <section className="space-y-4">
-        <Card className="portal-card border-[var(--portal-outline)] shadow-none">
-          <CardContent className="p-2">
             <div className="grid gap-2 sm:grid-cols-3">
               <DetailTabButton
                 isActive={activeTab === "history"}
@@ -213,225 +202,252 @@ export function ResidentApplicationPage() {
                 onClick={() => setActiveTab("documents")}
               />
             </div>
-          </CardContent>
-        </Card>
 
-        {activeTab === "history" ? (
-          <Card className="portal-card border-[var(--portal-outline)] shadow-none">
-            <CardHeader>
-              <CardTitle>Status history</CardTitle>
-              <CardDescription>All status updates posted to your case.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Remarks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {application.statusHistory.length > 0 ? (
-                    application.statusHistory.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.createdAtLabel}</TableCell>
-                        <TableCell className="font-medium">{item.statusLabel}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {item.remarks ?? "No remarks were recorded for this update."}
-                        </TableCell>
+            {activeTab === "history" ? (
+              <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+                <CardHeader>
+                  <CardTitle>Status history</CardTitle>
+                  <CardDescription>All status updates posted to your case.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Remarks</TableHead>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
-                        No status history has been posted yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {activeTab === "requirements" ? (
-          <Card className="portal-card border-[var(--portal-outline)] shadow-none">
-            <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardTitle>Requirement checklist</CardTitle>
-                  <CardDescription>
-                    Requirement records linked to this application.
-                  </CardDescription>
-                </div>
-                <Badge variant={requirementItemsNeedingAttention > 0 ? "secondary" : "outline"}>
-                  {requirementItemsNeedingAttention > 0
-                    ? `${requirementItemsNeedingAttention} need attention`
-                    : "No pending items"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {application.requirements.length > 0 ? (
-                application.requirements.map((requirement) => {
-                  const needsResubmit =
-                    requirement.status === "rejected" ||
-                    requirement.status === "needs_resubmission";
-                  const daysInfo = requirement.reviewedAt
-                    ? Math.floor(
-                        (Date.now() - new Date(requirement.reviewedAt).getTime()) / 86_400_000,
-                      )
-                    : null;
-
-                  return (
-                    <div
-                      key={requirement.id}
-                      className={[
-                        "rounded-xl border p-4",
-                        needsResubmit
-                          ? "border-yellow-300 bg-yellow-50"
-                          : "border-[var(--portal-outline)] bg-white",
-                      ].join(" ")}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="font-medium text-[var(--portal-ink)]">{requirement.name}</p>
-                          {requirement.description && (
-                            <p className="text-xs text-[var(--portal-muted)]">{requirement.description}</p>
-                          )}
-                          {daysInfo !== null && (
-                            <p className="text-xs text-[var(--portal-muted)]">
-                              Reviewed {daysInfo} day{daysInfo === 1 ? "" : "s"} ago
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge
-                            variant={
-                              requirement.status === "approved"
-                                ? "secondary"
-                                : requirement.status === "submitted"
-                                  ? "default"
-                                  : "outline"
-                            }
-                          >
-                            {requirement.statusLabel}
-                          </Badge>
-                          {needsResubmit && (
-                            <Button
-                              size="sm"
-                              className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
-                              onClick={() =>
-                                navigate(`/resident/uploads?requirement=${requirement.id}`)
-                              }
-                            >
-                              <Upload className="h-3 w-3" />
-                              Resubmit
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {requirement.remarks && (
-                        <p className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                          Staff note: {requirement.remarks}
-                        </p>
-                      )}
-                      {requirement.documents.length > 0 && (
-                        <div className="mt-3 space-y-1">
-                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--portal-muted)]">
-                            Linked files ({requirement.documents.length})
-                          </p>
-                          {requirement.documents.map((doc) => (
-                            <div
-                              key={doc.id}
-                              className="flex items-center justify-between gap-3 rounded-md border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-3 py-1.5 text-sm"
-                            >
-                              <span className="truncate text-[var(--portal-ink)]">{doc.fileName}</span>
-                              <Badge variant="outline" className="shrink-0 text-xs">
-                                {doc.statusLabel}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-                  No explicit requirement records are linked yet.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {activeTab === "documents" ? (
-          <Card className="portal-card border-[var(--portal-outline)] shadow-none">
-            <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardTitle>Uploaded documents</CardTitle>
-                  <CardDescription>
-                    Files already attached to this request.
-                  </CardDescription>
-                </div>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/resident/uploads">
-                    Open upload center
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>File</TableHead>
-                    <TableHead>Linked requirement</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Uploaded</TableHead>
-                    <TableHead>Remarks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {application.documents.length > 0 ? (
-                    application.documents.map((document) => {
-                      const linkedReq = application.requirements.find(
-                        (r) => r.id === document.applicationRequirementId,
-                      );
-
-                      return (
-                        <TableRow key={document.id}>
-                          <TableCell className="font-medium">{document.fileName}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {linkedReq ? linkedReq.name : "General supporting document"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{document.statusLabel}</Badge>
-                          </TableCell>
-                          <TableCell>{document.createdAtLabel}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {document.remarks ?? "No document remarks yet."}
+                    </TableHeader>
+                    <TableBody>
+                      {application.statusHistory.length > 0 ? (
+                        application.statusHistory.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.createdAtLabel}</TableCell>
+                            <TableCell className="font-medium">{item.statusLabel}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {item.remarks ?? "No remarks were recorded for this update."}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                            No status history has been posted yet.
                           </TableCell>
                         </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {activeTab === "requirements" ? (
+              <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Requirement checklist</CardTitle>
+                      <CardDescription>
+                        Requirement records linked to this application.
+                      </CardDescription>
+                    </div>
+                    <Badge variant={requirementItemsNeedingAttention > 0 ? "secondary" : "outline"}>
+                      {requirementItemsNeedingAttention > 0
+                        ? `${requirementItemsNeedingAttention} need attention`
+                        : "No pending items"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {application.requirements.length > 0 ? (
+                    application.requirements.map((requirement) => {
+                      const needsResubmit =
+                        requirement.status === "rejected" ||
+                        requirement.status === "needs_resubmission";
+                      const daysInfo = requirement.reviewedAt
+                        ? Math.floor(
+                            (Date.now() - new Date(requirement.reviewedAt).getTime()) / 86_400_000,
+                          )
+                        : null;
+
+                      return (
+                        <div
+                          key={requirement.id}
+                          className={[
+                            "rounded-xl border p-4",
+                            needsResubmit
+                              ? "border-yellow-300 bg-yellow-50"
+                              : "border-[var(--portal-outline)] bg-white",
+                          ].join(" ")}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="font-medium text-[var(--portal-ink)]">{requirement.name}</p>
+                              {requirement.description && (
+                                <p className="text-xs text-[var(--portal-muted)]">{requirement.description}</p>
+                              )}
+                              {daysInfo !== null && (
+                                <p className="text-xs text-[var(--portal-muted)]">
+                                  Reviewed {daysInfo} day{daysInfo === 1 ? "" : "s"} ago
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge
+                                variant={
+                                  requirement.status === "approved"
+                                    ? "secondary"
+                                    : requirement.status === "submitted"
+                                      ? "default"
+                                      : "outline"
+                                }
+                              >
+                                {requirement.statusLabel}
+                              </Badge>
+                              {needsResubmit && (
+                                <Button
+                                  size="sm"
+                                  className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+                                  onClick={() => {
+                                    setIsDetailsModalOpen(false);
+                                    navigate(`/resident/uploads?requirement=${requirement.id}`);
+                                  }}
+                                >
+                                  <Upload className="h-3 w-3" />
+                                  Resubmit
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          {requirement.remarks && (
+                            <p className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+                              Staff note: {requirement.remarks}
+                            </p>
+                          )}
+                          {requirement.documents.length > 0 && (
+                            <div className="mt-3 space-y-1">
+                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--portal-muted)]">
+                                Linked files ({requirement.documents.length})
+                              </p>
+                              {requirement.documents.map((doc) => (
+                                <div
+                                  key={doc.id}
+                                  className="flex items-center justify-between gap-3 rounded-md border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-3 py-1.5 text-sm"
+                                >
+                                  <span className="truncate text-[var(--portal-ink)]">{doc.fileName}</span>
+                                  <Badge variant="outline" className="shrink-0 text-xs">
+                                    {doc.statusLabel}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       );
                     })
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                        No uploaded documents are linked yet.
-                      </TableCell>
-                    </TableRow>
+                    <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+                      No explicit requirement records are linked yet.
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ) : null}
-      </section>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {activeTab === "documents" ? (
+              <Card className="portal-card border-[var(--portal-outline)] shadow-none">
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Uploaded documents</CardTitle>
+                      <CardDescription>
+                        Files already attached to this request.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsDetailsModalOpen(false);
+                        navigate("/resident/uploads");
+                      }}
+                    >
+                      Open upload center
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>File</TableHead>
+                        <TableHead>Linked requirement</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Uploaded</TableHead>
+                        <TableHead>Remarks</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {application.documents.length > 0 ? (
+                        application.documents.map((document) => {
+                          const linkedReq = application.requirements.find(
+                            (r) => r.id === document.applicationRequirementId,
+                          );
+
+                          return (
+                            <TableRow key={document.id}>
+                              <TableCell className="font-medium">{document.fileName}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {linkedReq ? linkedReq.name : "General supporting document"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{document.statusLabel}</Badge>
+                              </TableCell>
+                              <TableCell>{document.createdAtLabel}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {document.remarks ?? "No document remarks yet."}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                            No uploaded documents are linked yet.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+            No application details available.
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        title="Request assistance"
+        description="Submit a new request from this page."
+        size="xl"
+      >
+        <ResidentRequestAssistanceForm
+          onSuccess={() => {
+            void queryClient.invalidateQueries({
+              queryKey: user ? queryKeys.resident.portal(user.id) : ["resident", "portal"],
+            });
+            setIsRequestModalOpen(false);
+          }}
+        />
+      </Modal>
     </div>
   );
 }
@@ -494,28 +510,19 @@ function ResidentApplicationLoadingState() {
     <div className="space-y-6">
       <ResidentPageHeader
         eyebrow="My Application"
-        title="Case history and remarks"
-        description="Loading your application history..."
-        chips={["Status History", "Requirement Tracker"]}
+        title="Application records"
+        description="Loading your application table..."
+        chips={["Case Tracking", "Resident Actions"]}
       />
       <Card className="portal-card border-[var(--portal-outline)] shadow-none">
         <CardHeader>
-          <CardTitle>Application summary</CardTitle>
-          <CardDescription>Preparing your case details and status timeline.</CardDescription>
+          <CardTitle>My application table</CardTitle>
+          <CardDescription>Preparing your case records and actions.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="portal-metric-card space-y-3 p-4">
-                <div className="h-3 w-1/2 animate-pulse rounded-full bg-[rgba(214,222,234,0.9)]" />
-                <div className="h-4 w-3/4 animate-pulse rounded-full bg-[rgba(214,222,234,0.85)]" />
-                <div className="h-3 w-full animate-pulse rounded-full bg-[rgba(214,222,234,0.7)]" />
-              </div>
-            ))}
-          </div>
+          <ResidentTableSkeleton title="Loading application records" columns={6} rows={3} />
         </CardContent>
       </Card>
-      <ResidentTableSkeleton title="Loading status history" columns={3} rows={5} />
     </div>
   );
 }

@@ -91,7 +91,7 @@ export function SiteHeader() {
             ) : (
               <>
                 <Button variant="secondary" size="sm" className="rounded-xl px-4 text-[color:var(--landing-ink)]" asChild>
-                  <NavLink to="/request-assistance">Request assistance</NavLink>
+                  <NavLink to="/register">Create account</NavLink>
                 </Button>
                 <Button variant="outline" size="sm" className="rounded-xl border-[color:var(--landing-outline)] bg-white/80 text-[color:var(--landing-ink)] hover:bg-white" asChild>
                   <NavLink to="/login">Sign in</NavLink>
@@ -170,8 +170,8 @@ export function SiteHeader() {
                 ) : (
                   <>
                     <Button className="rounded-xl bg-[var(--landing-accent)] text-white hover:bg-[var(--landing-accent-strong)]" asChild>
-                      <NavLink to="/request-assistance" onClick={() => setMobileOpen(false)}>
-                        Request assistance
+                      <NavLink to="/register" onClick={() => setMobileOpen(false)}>
+                        Create account
                       </NavLink>
                     </Button>
                     <Button variant="outline" className="rounded-xl border-[var(--landing-outline)]" asChild>

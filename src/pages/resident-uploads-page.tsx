@@ -265,7 +265,7 @@ export function ResidentUploadsPage() {
                 asChild
                 className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
               >
-                <Link to="/request-assistance">Submit a request first</Link>
+                <Link to="/resident/application?request=1">Submit a request first</Link>
               </Button>
             </div>
           )}

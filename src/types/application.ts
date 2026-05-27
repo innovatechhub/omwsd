@@ -24,3 +24,13 @@ export interface AssistanceRequestSubmissionResult {
   applicationId: string;
   referenceNumber: string;
 }
+
+export interface ResidentAssistanceRequestInput {
+  assistanceTypeSlug: string;
+  requestedAmount: string;
+  householdSize: string;
+  monthlyIncome: string;
+  requestReason: string;
+  supportingDocuments: File[];
+  consentAccepted: boolean;
+}

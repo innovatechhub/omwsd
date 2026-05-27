@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -22,15 +22,13 @@ import {
 } from "recharts";
 import { Link } from "react-router-dom";
 
-import {
-  getAdminDashboardMetrics,
-  getApplicationsByBarangay,
-  getVerificationQueue,
-} from "@/services/admin-service";
-import type { AdminQueueItem } from "@/types/admin";
+import { getAdminApplications } from "@/services/admin-service";
+import type { AdminApplicationRecord, AdminQueueItem } from "@/types/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 const CHART_COLORS = {
   pending: "#f97316",
@@ -53,27 +51,123 @@ function fmt(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+type DatePreset = "all" | "last7" | "last30" | "thisMonth" | "custom";
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getPresetRange(preset: DatePreset): { from: string; to: string } {
+  if (preset === "all" || preset === "custom") {
+    return { from: "", to: "" };
+  }
+
+  const now = new Date();
+  const end = toDateInputValue(now);
+
+  if (preset === "thisMonth") {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from: toDateInputValue(startOfMonth), to: end };
+  }
+
+  const lookbackDays = preset === "last7" ? 6 : 29;
+  const start = new Date(now);
+  start.setDate(now.getDate() - lookbackDays);
+  return { from: toDateInputValue(start), to: end };
+}
+
+function filterApplicationsByDateRange(
+  applications: AdminApplicationRecord[],
+  dateFrom: string,
+  dateTo: string,
+) {
+  if (!dateFrom && !dateTo) {
+    return applications;
+  }
+
+  return applications.filter((application) => {
+    if (!application.submittedAtRaw) {
+      return false;
+    }
+
+    const submittedDate = application.submittedAtRaw.slice(0, 10);
+    if (dateFrom && submittedDate < dateFrom) {
+      return false;
+    }
+
+    if (dateTo && submittedDate > dateTo) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 export function AdminDashboardPage() {
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const dashboardQuery = useQuery({
-    queryKey: ["admin", "dashboard"],
-    queryFn: async () => {
-      const [metrics, barangays, queue] = await Promise.all([
-        getAdminDashboardMetrics(),
-        getApplicationsByBarangay(),
-        getVerificationQueue(),
-      ]);
-      return { metrics, barangays, queue };
-    },
+    queryKey: ["admin", "dashboard", "applications"],
+    queryFn: getAdminApplications,
   });
 
-  const metrics = dashboardQuery.data?.metrics;
-  const barangays = dashboardQuery.data?.barangays ?? [];
-  const queue = dashboardQuery.data?.queue ?? [];
+  const applications = dashboardQuery.data ?? [];
+  const filteredApplications = useMemo(
+    () => filterApplicationsByDateRange(applications, dateFrom, dateTo),
+    [applications, dateFrom, dateTo],
+  );
+  const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo);
+  const scopedApplications = hasInvalidDateRange ? [] : filteredApplications;
 
-  const totalApplications = metrics?.totalApplications ?? 0;
-  const pendingVerification = metrics?.pendingVerification ?? 0;
-  const approved = metrics?.approved ?? 0;
-  const forCorrection = metrics?.forCorrection ?? 0;
+  const barangays = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const application of scopedApplications) {
+      counts.set(application.barangay, (counts.get(application.barangay) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, applicationsTotal]) => ({ name, applications: applicationsTotal }))
+      .sort((left, right) => right.applications - left.applications)
+      .slice(0, 5);
+  }, [scopedApplications]);
+
+  const queue = useMemo(
+    () =>
+      scopedApplications
+        .filter((application) =>
+          ["Pending verification", "For correction", "Under review"].includes(application.status),
+        )
+        .slice(0, 5)
+        .map(
+          (application) =>
+            ({
+              reference: application.reference,
+              resident: application.resident,
+              service: application.assistance,
+              status: application.status,
+              priority: application.priority,
+              submittedAtRaw: application.submittedAtRaw,
+            }) satisfies AdminQueueItem,
+        ),
+    [scopedApplications],
+  );
+
+  const totalApplications = scopedApplications.length;
+  const pendingVerification = scopedApplications.filter(
+    (application) => application.status === "Pending verification",
+  ).length;
+  const approved = scopedApplications.filter(
+    (application) => application.status === "Approved",
+  ).length;
+  const forCorrection = scopedApplications.filter(
+    (application) => application.status === "For correction",
+  ).length;
 
   const urgentCount = queue.filter((i) => i.priority === "Urgent").length;
   const highCount = queue.filter((i) => i.priority === "High").length;
@@ -112,6 +206,24 @@ export function AdminDashboardPage() {
     .sort((a, b) => b[1] - a[1])
     .map(([label, total], i) => ({ label, total, color: statusPalette[i % statusPalette.length] }));
 
+  function handlePresetChange(nextPreset: DatePreset) {
+    setDatePreset(nextPreset);
+
+    if (nextPreset === "custom") {
+      return;
+    }
+
+    const range = getPresetRange(nextPreset);
+    setDateFrom(range.from);
+    setDateTo(range.to);
+  }
+
+  function clearDateFilters() {
+    setDatePreset("all");
+    setDateFrom("");
+    setDateTo("");
+  }
+
   return (
     <div className="space-y-6">
       {dashboardQuery.isError && (
@@ -124,12 +236,66 @@ export function AdminDashboardPage() {
         </div>
       )}
 
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">Date filter</p>
+              <p className="text-xs text-muted-foreground">
+                Filter dashboard data using application submission date.
+              </p>
+            </div>
+
+            <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[180px_160px_160px_auto]">
+              <Select
+                value={datePreset}
+                onChange={(event) => handlePresetChange(event.target.value as DatePreset)}
+              >
+                <option value="all">All time</option>
+                <option value="last7">Last 7 days</option>
+                <option value="last30">Last 30 days</option>
+                <option value="thisMonth">This month</option>
+                <option value="custom">Custom range</option>
+              </Select>
+
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => {
+                  setDatePreset("custom");
+                  setDateFrom(event.target.value);
+                }}
+              />
+
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(event) => {
+                  setDatePreset("custom");
+                  setDateTo(event.target.value);
+                }}
+              />
+
+              <Button type="button" variant="outline" onClick={clearDateFilters}>
+                Clear
+              </Button>
+            </div>
+          </div>
+
+          {hasInvalidDateRange && (
+            <p className="mt-3 text-xs text-destructive">
+              End date must be the same as or later than the start date.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* KPI row */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Total applications"
           value={fmt(totalApplications)}
-          sub="All submitted cases"
+          sub={dateFrom || dateTo ? "Within selected date range" : "All submitted cases"}
           icon={<ClipboardCheck className="h-4 w-4" />}
         />
         <KpiCard

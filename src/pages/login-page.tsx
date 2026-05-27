@@ -21,11 +21,40 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+const adminRoles: AppRole[] = ["admin", "super_admin", "social_worker"];
+
+function canRoleAccessRedirectPath(targetPath: string, role: AppRole | null) {
+  if (targetPath.startsWith("/resident")) {
+    return role === "resident";
+  }
+
+  if (targetPath.startsWith("/admin")) {
+    return Boolean(role && adminRoles.includes(role));
+  }
+
+  if (targetPath.startsWith("/unauthorized")) {
+    return false;
+  }
+
+  return true;
+}
+
+function resolveRoleFromMetadata(value: unknown): AppRole | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  if (value === "resident" || value === "admin" || value === "super_admin" || value === "social_worker") {
+    return value;
+  }
+
+  return null;
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refreshSession, role, isConfigured } = useAuth();
+  const { refreshSession, isConfigured } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
@@ -48,7 +77,7 @@ export function LoginPage() {
       const profile = await getProfile(response.user ?? null);
       const nextRole =
         profile?.role ??
-        ((response.user?.user_metadata?.role as AppRole | undefined) ?? role);
+        resolveRoleFromMetadata(response.user?.user_metadata?.role);
 
       if (nextRole === "resident" && profile?.is_active === false) {
         await import("@/services/auth-service").then((m) => m.signOut());
@@ -59,9 +88,11 @@ export function LoginPage() {
 
       const redirect = searchParams.get("redirect");
       const fallbackPath = getDefaultRouteForAuthenticatedUser(nextRole);
+      const targetPath =
+        redirect && canRoleAccessRedirectPath(redirect, nextRole) ? redirect : fallbackPath;
 
       toast.success("Signed in successfully.");
-      navigate(redirect || fallbackPath, { replace: true });
+      navigate(targetPath, { replace: true });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to sign in with those credentials.";

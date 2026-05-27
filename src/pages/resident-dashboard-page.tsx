@@ -114,7 +114,7 @@ export function ResidentDashboardPage() {
               </Link>
             </Button>
             <Button variant="outline" className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]" asChild>
-              <Link to={application ? "/resident/uploads" : "/request-assistance"}>
+              <Link to={application ? "/resident/uploads" : "/resident/application?request=1"}>
                 {application ? "Upload documents" : "Submit a request"}
                 <Upload className="h-4 w-4" />
               </Link>

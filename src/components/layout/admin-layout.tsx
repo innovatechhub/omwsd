@@ -65,14 +65,6 @@ export function AdminLayout() {
                   <p className="mt-0.5 truncate text-xs text-[var(--portal-muted)]">{user.email}</p>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
-                  Case Review
-                </span>
-                <span className="portal-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
-                  Verification
-                </span>
-              </div>
             </div>
 
             <nav className="grid gap-1.5">

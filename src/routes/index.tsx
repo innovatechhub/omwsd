@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import { AdminLayout } from "@/components/layout/admin-layout";
 import { MainLayout } from "@/components/layout/main-layout";
@@ -14,12 +14,9 @@ import { FaqPage } from "@/pages/faq-page";
 import { ForgotPasswordPage } from "@/pages/forgot-password-page";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
-import { NotificationsPage } from "@/pages/notifications-page";
 import { PrivacyPolicyPage } from "@/pages/privacy-policy-page";
 import { ProfilePage } from "@/pages/profile-page";
-import { RequestAssistancePage } from "@/pages/request-assistance-page";
 import { RegisterPage } from "@/pages/register-page";
-import { ResidentSettingsPage } from "@/pages/resident-settings-page";
 import { ReportsPage } from "@/pages/reports-page";
 import { RequirementsPage } from "@/pages/requirements-page";
 import { ResidentApplicationPage } from "@/pages/resident-application-page";
@@ -46,7 +43,10 @@ const router = createBrowserRouter([
           { path: "/faq", element: <FaqPage /> },
           { path: "/contact", element: <ContactPage /> },
           { path: "/privacy-policy", element: <PrivacyPolicyPage /> },
-          { path: "/request-assistance", element: <RequestAssistancePage /> },
+          {
+            path: "/request-assistance",
+            element: <Navigate to="/resident/application?request=1" replace />,
+          },
           {
             path: "/unauthorized",
             element: <UnauthorizedPage />,
@@ -107,16 +107,8 @@ const router = createBrowserRouter([
                 element: <ResidentUploadsPage />,
               },
               {
-                path: "notifications",
-                element: <NotificationsPage />,
-              },
-              {
                 path: "profile",
                 element: <ProfilePage />,
-              },
-              {
-                path: "settings",
-                element: <ResidentSettingsPage />,
               },
             ],
           },

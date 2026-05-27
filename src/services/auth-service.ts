@@ -13,6 +13,15 @@ export interface SignInCredentials {
 export interface SignUpPayload extends SignInCredentials {
   fullName?: string;
   redirectTo?: string;
+  phoneNumber?: string;
+  birthDate?: string;
+  sex?: string;
+  civilStatus?: string;
+  municipality?: string;
+  barangay?: string;
+  addressLine?: string;
+  governmentIdType?: string;
+  governmentIdNumber?: string;
 }
 
 function assertSupabaseConfigured() {
@@ -42,7 +51,21 @@ export async function signInWithPassword(credentials: SignInCredentials) {
   );
 }
 
-export async function signUp({ email, password, fullName, redirectTo }: SignUpPayload) {
+export async function signUp({
+  email,
+  password,
+  fullName,
+  redirectTo,
+  phoneNumber,
+  birthDate,
+  sex,
+  civilStatus,
+  municipality,
+  barangay,
+  addressLine,
+  governmentIdType,
+  governmentIdNumber,
+}: SignUpPayload) {
   assertSupabaseConfigured();
 
   return resolveMutation<AuthResponse["data"]>(
@@ -53,6 +76,15 @@ export async function signUp({ email, password, fullName, redirectTo }: SignUpPa
         emailRedirectTo: redirectTo,
         data: {
           ...(fullName ? { full_name: fullName } : {}),
+          ...(phoneNumber ? { phone_number: phoneNumber } : {}),
+          ...(birthDate ? { birth_date: birthDate } : {}),
+          ...(sex ? { sex } : {}),
+          ...(civilStatus ? { civil_status: civilStatus } : {}),
+          ...(municipality ? { municipality } : {}),
+          ...(barangay ? { barangay } : {}),
+          ...(addressLine ? { address_line: addressLine } : {}),
+          ...(governmentIdType ? { government_id_type: governmentIdType } : {}),
+          ...(governmentIdNumber ? { government_id_number: governmentIdNumber } : {}),
           role: "resident",
           is_active: false,
         },
