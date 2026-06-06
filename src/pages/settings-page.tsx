@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-type SavingSection = "requirements" | null;
+type SavingSection = "requirements" | "staff" | null;
 type SettingsTab = "requirements" | "users";
 
 type SettingsPageMode = "admin" | "resident";
@@ -50,17 +50,6 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
 
   const [serviceType, setServiceType] = useState("medical-assistance");
   const [requirementsText, setRequirementsText] = useState("");
-  const [staffEmail, setStaffEmail] = useState("admin@gmail.com");
-  const [staffRole, setStaffRole] = useState("admin");
-  const [verificationSla, setVerificationSla] = useState(
-    String(fallbackSettings.systemPolicies.verificationSla),
-  );
-  const [correctionWindow, setCorrectionWindow] = useState(
-    String(fallbackSettings.systemPolicies.correctionWindow),
-  );
-  const [defaultNotification, setDefaultNotification] = useState<string>(
-    fallbackSettings.systemPolicies.defaultNotification,
-  );
   const [savingSection, setSavingSection] = useState<SavingSection>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>("requirements");
   const [newUserName, setNewUserName] = useState("");
@@ -74,6 +63,10 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
   const staffRoles = (settingsData.staffRoles as Record<string, unknown> | undefined) ?? {};
   const systemPolicies =
     (settingsData.systemPolicies as Record<string, unknown> | undefined) ?? {};
+  const verificationSla =
+    typeof systemPolicies.verificationSla === "number"
+      ? systemPolicies.verificationSla
+      : fallbackSettings.systemPolicies.verificationSla;
   const staffAssignments = useMemo(
     () =>
       Object.entries(staffRoles).filter(
@@ -97,28 +90,6 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
     );
   }, [requirementTemplates, serviceType]);
 
-  useEffect(() => {
-    if (typeof systemPolicies.verificationSla === "number") {
-      setVerificationSla(String(systemPolicies.verificationSla));
-    }
-
-    if (typeof systemPolicies.correctionWindow === "number") {
-      setCorrectionWindow(String(systemPolicies.correctionWindow));
-    }
-
-    if (typeof systemPolicies.defaultNotification === "string") {
-      setDefaultNotification(systemPolicies.defaultNotification);
-    }
-  }, [systemPolicies]);
-
-  useEffect(() => {
-    const matchedRole = staffRoles[staffEmail.trim().toLowerCase()];
-
-    if (typeof matchedRole === "string") {
-      setStaffRole(matchedRole);
-    }
-  }, [staffEmail, staffRoles]);
-
   async function handleSaveRequirements() {
     if (isResidentView) {
       toast.info("These settings are managed by administrators.");
@@ -139,61 +110,6 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
       toast.success("Requirements template saved.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save requirements template.");
-    } finally {
-      setSavingSection(null);
-    }
-  }
-
-  async function handleSaveStaffRole() {
-    if (isResidentView) {
-      toast.info("These settings are managed by administrators.");
-      return;
-    }
-
-    if (!staffEmail.trim()) {
-      toast.error("Enter a staff email before saving.");
-      return;
-    }
-
-    try {
-      setSavingSection("staff");
-
-      await saveAdminSetting("staff_roles", {
-        ...staffRoles,
-        [staffEmail.trim().toLowerCase()]: staffRole,
-      });
-      await settingsQuery.refetch();
-      toast.success("Staff role assignment saved.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to save staff role.");
-    } finally {
-      setSavingSection(null);
-    }
-  }
-
-  async function handleSavePolicies() {
-    if (isResidentView) {
-      toast.info("These settings are managed by administrators.");
-      return;
-    }
-
-    if (Number(verificationSla) < 1 || Number(correctionWindow) < 1) {
-      toast.error("Policy values must be at least 1 day.");
-      return;
-    }
-
-    try {
-      setSavingSection("policies");
-
-      await saveAdminSetting("system_policies", {
-        verificationSla: Number(verificationSla),
-        correctionWindow: Number(correctionWindow),
-        defaultNotification,
-      });
-      await settingsQuery.refetch();
-      toast.success("System defaults updated.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to save system policies.");
     } finally {
       setSavingSection(null);
     }
@@ -535,31 +451,6 @@ function SummaryCard({
     </Card>
   );
 }
-
-function PreviewRow({
-  label,
-  value,
-  residentMode = false,
-}: {
-  label: string;
-  value: string;
-  residentMode?: boolean;
-}) {
-  return (
-    <div
-      className={[
-        "flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm",
-        residentMode ? "border-[var(--portal-outline)] bg-white" : "bg-background",
-      ].join(" ")}
-    >
-      <p className={residentMode ? "text-[var(--portal-muted)]" : "text-muted-foreground"}>{label}</p>
-      <p className={residentMode ? "font-medium capitalize text-[var(--portal-ink)]" : "font-medium capitalize"}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 
 function TabButton({
   isActive,

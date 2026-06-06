@@ -756,7 +756,7 @@ export async function getResidentIdFiles(profileId: string): Promise<AdminReside
     return [];
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
+  return (data ?? [])
     .filter((item) => typeof item.name === "string" && item.id !== null)
     .map((item) => ({
       name: String(item.name ?? ""),
@@ -787,4 +787,293 @@ export async function sendResidentFollowUpNotification(
   if (error) {
     throw error;
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Admin sector registration functions
+// ─────────────────────────────────────────────────────────────
+
+function formatAdminDate(value: string | null | undefined): string {
+  if (!value) return "Not recorded";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  }).format(new Date(value));
+}
+
+export async function getAdminSectorRegistrations(filters?: {
+  sectorType?: SectorType;
+  status?: string;
+}): Promise<AdminSectorRegistrationRecord[]> {
+  assertSupabaseConfigured();
+
+  let query = supabase
+    .from("sector_registrations")
+    .select(`
+      id, resident_id, profile_id, sector_type, status,
+      sector_id_type, sector_id_number,
+      document_file_path, document_file_name, document_bucket,
+      document_uploaded_at, appointment_id, admin_remarks, reviewed_at, created_at,
+      residents(resident_code, barangays(name)),
+      profiles(full_name)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (filters?.sectorType) {
+    query = query.eq("sector_type", filters.sectorType);
+  }
+  if (filters?.status) {
+    query = query.eq("status", filters.status);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+
+  const appointmentIds = rows
+    .map((r) => (typeof r.appointment_id === "string" ? r.appointment_id : null))
+    .filter(Boolean) as string[];
+
+  const appointmentMap = new Map<string, Record<string, unknown>>();
+  if (appointmentIds.length > 0) {
+    const { data: apptData } = await supabase
+      .from("appointments")
+      .select("id, status, appointment_slots(slot_label)")
+      .in("id", appointmentIds);
+
+    for (const appt of (apptData ?? []) as Array<Record<string, unknown>>) {
+      appointmentMap.set(String(appt.id ?? ""), appt);
+    }
+  }
+
+  return rows.map((row) => {
+    const sectorType = String(row.sector_type ?? "pwd") as SectorType;
+    const status = String(row.status ?? "pending_appointment") as SectorRegistrationStatus;
+    const resident = row.residents as Record<string, unknown> | null;
+    const barangay = resident?.barangays as Record<string, unknown> | null;
+    const profile = row.profiles as Record<string, unknown> | null;
+    const apptId = typeof row.appointment_id === "string" ? row.appointment_id : null;
+    const appt = apptId ? appointmentMap.get(apptId) : null;
+    const apptSlot = appt?.appointment_slots as Record<string, unknown> | null;
+
+    return {
+      id: String(row.id ?? ""),
+      residentId: String(row.resident_id ?? ""),
+      profileId: String(row.profile_id ?? ""),
+      residentName: String(profile?.full_name ?? "Unknown resident"),
+      residentCode: String(resident?.resident_code ?? "—"),
+      barangay: String(barangay?.name ?? "—"),
+      sectorType,
+      sectorTypeLabel: formatSectorTypeLabel(sectorType),
+      status,
+      statusLabel: formatSectorStatusLabel(status),
+      sectorIdType: typeof row.sector_id_type === "string" ? row.sector_id_type : null,
+      sectorIdNumber: typeof row.sector_id_number === "string" ? row.sector_id_number : null,
+      documentFilePath: typeof row.document_file_path === "string" ? row.document_file_path : null,
+      documentFileName: typeof row.document_file_name === "string" ? row.document_file_name : null,
+      documentBucket: typeof row.document_bucket === "string" ? row.document_bucket : null,
+      documentUploadedAt: typeof row.document_uploaded_at === "string" ? row.document_uploaded_at : null,
+      appointmentSlotLabel: typeof apptSlot?.slot_label === "string" ? apptSlot.slot_label : null,
+      appointmentStatus: appt ? String(appt.status ?? "") : null,
+      appointmentStatusLabel: appt ? formatAppointmentStatusLabel(String(appt.status ?? "")) : null,
+      adminRemarks: typeof row.admin_remarks === "string" ? row.admin_remarks : null,
+      reviewedAt: typeof row.reviewed_at === "string" ? row.reviewed_at : null,
+      createdAt: String(row.created_at ?? ""),
+      createdAtLabel: formatAdminDate(typeof row.created_at === "string" ? row.created_at : null),
+    } satisfies AdminSectorRegistrationRecord;
+  });
+}
+
+export async function reviewSectorRegistration(
+  registrationId: string,
+  action: "verify" | "reject",
+  remarks?: string,
+): Promise<void> {
+  assertSupabaseConfigured();
+  const actorId = await getCurrentUserId();
+
+  const now = new Date().toISOString();
+
+  const { data: regData, error: regFetchError } = await supabase
+    .from("sector_registrations")
+    .select("resident_id, profile_id, sector_type")
+    .eq("id", registrationId)
+    .single();
+
+  if (regFetchError) throw regFetchError;
+
+  const reg = regData as Record<string, unknown>;
+  const residentId = String(reg.resident_id ?? "");
+  const profileId = String(reg.profile_id ?? "");
+  const sectorType = String(reg.sector_type ?? "") as SectorType;
+
+  const { error: updateError } = await supabase
+    .from("sector_registrations")
+    .update({
+      status: action === "verify" ? "verified" : "rejected",
+      admin_remarks: remarks ?? null,
+      reviewed_by: actorId,
+      reviewed_at: now,
+      verified_at: action === "verify" ? now : null,
+    })
+    .eq("id", registrationId);
+
+  if (updateError) throw updateError;
+
+  if (action === "verify") {
+    await verifyResident(residentId);
+
+    await supabase.from("notifications").insert({
+      recipient_id: profileId,
+      title: `Your ${formatSectorTypeLabel(sectorType)} registration is verified`,
+      message: `OMSWD has verified your ${formatSectorTypeLabel(sectorType)} sector registration.`,
+      category: "sector_verification",
+      link_url: `/resident/sectors/${sectorType}`,
+      is_read: false,
+    });
+  } else {
+    await supabase.from("notifications").insert({
+      recipient_id: profileId,
+      title: `Your ${formatSectorTypeLabel(sectorType)} registration requires attention`,
+      message: remarks
+        ? `OMSWD reviewed your registration: ${remarks}`
+        : "Your registration was not approved. Please check your document and resubmit.",
+      category: "sector_verification",
+      link_url: `/resident/sectors/${sectorType}`,
+      is_read: false,
+    });
+  }
+}
+
+export async function getAdminAppointments(date?: string): Promise<AdminAppointmentRecord[]> {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(`
+      id, sector_registration_id, status, notes, created_at,
+      sector_registrations(sector_type),
+      residents(resident_code, barangays(name)),
+      profiles(full_name),
+      appointment_slots(slot_label, slot_date)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .filter((row) => {
+      if (!date) return true;
+      const slot = row.appointment_slots as Record<string, unknown> | null;
+      return slot?.slot_date === date;
+    })
+    .map((row) => {
+      const reg = row.sector_registrations as Record<string, unknown> | null;
+      const resident = row.residents as Record<string, unknown> | null;
+      const profile = row.profiles as Record<string, unknown> | null;
+      const barangay = resident?.barangays as Record<string, unknown> | null;
+      const slot = row.appointment_slots as Record<string, unknown> | null;
+      const sectorType = String(reg?.sector_type ?? "pwd") as SectorType;
+      const status = String(row.status ?? "booked") as AdminAppointmentRecord["status"];
+
+      return {
+        id: String(row.id ?? ""),
+        sectorRegistrationId: String(row.sector_registration_id ?? ""),
+        residentName: String(profile?.full_name ?? "Unknown"),
+        residentCode: String(resident?.resident_code ?? "—"),
+        barangay: String(barangay?.name ?? "—"),
+        sectorType,
+        sectorTypeLabel: formatSectorTypeLabel(sectorType),
+        slotLabel: String(slot?.slot_label ?? "—"),
+        slotDate: String(slot?.slot_date ?? ""),
+        status,
+        statusLabel: formatAppointmentStatusLabel(status),
+        notes: typeof row.notes === "string" ? row.notes : null,
+        createdAt: String(row.created_at ?? ""),
+      } satisfies AdminAppointmentRecord;
+    });
+}
+
+export async function updateAppointmentStatus(
+  appointmentId: string,
+  status: "confirmed" | "completed" | "cancelled" | "no_show",
+): Promise<void> {
+  assertSupabaseConfigured();
+
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { status };
+  if (status === "confirmed") patch.confirmed_at = now;
+  if (status === "completed") patch.completed_at = now;
+  if (status === "cancelled") patch.cancelled_at = now;
+
+  const { error } = await supabase
+    .from("appointments")
+    .update(patch)
+    .eq("id", appointmentId);
+
+  if (error) throw error;
+}
+
+export async function getAdminAppointmentSlots(): Promise<AppointmentSlot[]> {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("appointment_slots")
+    .select("*")
+    .order("slot_date", { ascending: true })
+    .order("slot_time", { ascending: true });
+
+  if (error) throw error;
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const maxCapacity = typeof row.max_capacity === "number" ? row.max_capacity : 5;
+    const bookedCount = typeof row.booked_count === "number" ? row.booked_count : 0;
+    return {
+      id: String(row.id ?? ""),
+      slotDate: String(row.slot_date ?? ""),
+      slotTime: String(row.slot_time ?? ""),
+      slotLabel: String(row.slot_label ?? ""),
+      sectorType: typeof row.sector_type === "string" ? (row.sector_type as SectorType) : null,
+      maxCapacity,
+      bookedCount,
+      availableCount: Math.max(maxCapacity - bookedCount, 0),
+      isFull: bookedCount >= maxCapacity,
+      isActive: row.is_active !== false,
+      notes: typeof row.notes === "string" ? row.notes : null,
+    } satisfies AppointmentSlot;
+  });
+}
+
+export async function createAppointmentSlot(input: CreateAppointmentSlotInput): Promise<void> {
+  assertSupabaseConfigured();
+  const actorId = await getCurrentUserId();
+
+  const { error } = await supabase.from("appointment_slots").insert({
+    slot_date: input.slotDate,
+    slot_time: input.slotTime,
+    slot_label: input.slotLabel,
+    sector_type: input.sectorType ?? null,
+    max_capacity: input.maxCapacity,
+    notes: input.notes ?? null,
+    is_active: true,
+    created_by: actorId,
+  });
+
+  if (error) throw error;
+}
+
+export async function updateAppointmentSlotActive(slotId: string, isActive: boolean): Promise<void> {
+  assertSupabaseConfigured();
+
+  const { error } = await supabase
+    .from("appointment_slots")
+    .update({ is_active: isActive })
+    .eq("id", slotId);
+
+  if (error) throw error;
+}
+
+export async function getSectorDocumentUrl(filePath: string): Promise<string> {
+  const { createSignedFileUrl } = await import("@/services/storage-service");
+  return createSignedFileUrl("sector-documents", filePath);
 }

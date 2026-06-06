@@ -8,6 +8,7 @@ const srcPath = fileURLToPath(new URL("./src", import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    preserveSymlinks: true,
     alias: {
       "@": path.resolve(srcPath),
     },

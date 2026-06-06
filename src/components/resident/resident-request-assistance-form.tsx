@@ -90,7 +90,10 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
 
   async function onSubmit(values: RequestFormValues) {
     try {
-      const result = await createResidentAssistanceRequest(values);
+      const result = await createResidentAssistanceRequest({
+        ...values,
+        requestedAmount: "",
+      });
       toast.success(`Application submitted. Reference: ${result.referenceNumber}`);
       form.reset();
       setCurrentStep(0);
