@@ -30,7 +30,6 @@ const fileArraySchema = z
 
 const requestSchema = z.object({
   assistanceTypeSlug: z.string().min(1, "Select an assistance type."),
-  requestedAmount: z.string(),
   householdSize: z.string(),
   monthlyIncome: z.string(),
   requestReason: z.string().min(20, "Provide enough case details for review."),
@@ -48,7 +47,7 @@ const steps = [
 ] as const;
 
 const stepFields: Array<Array<keyof RequestFormValues>> = [
-  ["assistanceTypeSlug", "requestedAmount", "householdSize", "monthlyIncome", "requestReason", "supportingDocuments"],
+  ["assistanceTypeSlug", "householdSize", "monthlyIncome", "requestReason", "supportingDocuments"],
   ["consentAccepted"],
 ];
 
@@ -68,7 +67,6 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
     resolver: zodResolver(requestSchema),
     defaultValues: {
       assistanceTypeSlug: "",
-      requestedAmount: "",
       householdSize: "",
       monthlyIncome: "",
       requestReason: "",
@@ -177,19 +175,6 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold" htmlFor="modal-requestedAmount">
-                Requested amount <span className="font-normal text-[var(--portal-muted)]">(optional)</span>
-              </label>
-              <Input
-                id="modal-requestedAmount"
-                type="number"
-                min="0"
-                placeholder="0.00"
-                {...form.register("requestedAmount")}
-              />
-            </div>
-
-            <div className="space-y-2">
               <label className="text-sm font-semibold" htmlFor="modal-householdSize">
                 Household size <span className="font-normal text-[var(--portal-muted)]">(optional)</span>
               </label>
@@ -289,14 +274,6 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
                   {selectedService?.title ?? "-"}
                 </span>
               </div>
-              {form.getValues("requestedAmount") ? (
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[var(--portal-muted)]">Requested amount</span>
-                  <span className="font-semibold text-[var(--portal-ink)]">
-                    PHP {Number(form.getValues("requestedAmount")).toLocaleString()}
-                  </span>
-                </div>
-              ) : null}
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[var(--portal-muted)]">Supporting documents</span>
                 <span className="font-semibold text-[var(--portal-ink)]">

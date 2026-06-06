@@ -12,6 +12,10 @@ export interface SignInCredentials {
 
 export interface SignUpPayload extends SignInCredentials {
   fullName?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   redirectTo?: string;
   phoneNumber?: string;
   birthDate?: string;
@@ -55,6 +59,10 @@ export async function signUp({
   email,
   password,
   fullName,
+  firstName,
+  middleName,
+  lastName,
+  suffix,
   redirectTo,
   phoneNumber,
   birthDate,
@@ -76,6 +84,10 @@ export async function signUp({
         emailRedirectTo: redirectTo,
         data: {
           ...(fullName ? { full_name: fullName } : {}),
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(middleName ? { middle_name: middleName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+          ...(suffix ? { suffix } : {}),
           ...(phoneNumber ? { phone_number: phoneNumber } : {}),
           ...(birthDate ? { birth_date: birthDate } : {}),
           ...(sex ? { sex } : {}),

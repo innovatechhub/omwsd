@@ -6,7 +6,6 @@ import {
   IdCard,
   LoaderCircle,
   MapPin,
-  ShieldCheck,
   User,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -34,7 +33,6 @@ const fileArraySchema = z
 
 const registerSchema = z
   .object({
-    // Step 1 — Personal
     lastName: z.string().min(1, "Enter your last name."),
     firstName: z.string().min(1, "Enter your first name."),
     middleName: z.string().optional(),
@@ -44,17 +42,14 @@ const registerSchema = z
     birthDate: z.string().min(1, "Enter your birth date."),
     sex: z.string().min(1, "Select a sex value."),
     civilStatus: z.string().min(1, "Select a civil status."),
-    // Step 2 — Address
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    confirmPassword: z.string().min(8, "Confirm your password."),
     municipality: z.string().min(2, "Select your municipality."),
     barangay: z.string().min(1, "Select your barangay."),
     addressLine: z.string().min(5, "Enter a complete address."),
-    // Step 3 — Identity
     governmentIdType: z.string().min(1, "Select an ID type."),
     governmentIdNumber: z.string().min(3, "Enter the ID number."),
     governmentIdFiles: fileArraySchema,
-    // Step 4 — Account credentials
-    password: z.string().min(8, "Password must be at least 8 characters."),
-    confirmPassword: z.string().min(8, "Confirm your password."),
   })
   .refine((values) => values.password === values.confirmPassword, {
     message: "Passwords do not match.",
@@ -63,20 +58,30 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-type StepKey = "personal" | "address" | "identity" | "account";
+type StepKey = "personal" | "address" | "identity";
 
 const steps: { key: StepKey; title: string }[] = [
   { key: "personal", title: "Personal Information" },
   { key: "address", title: "Address Information" },
   { key: "identity", title: "Identity Information" },
-  { key: "account", title: "Account Setup" },
 ];
 
 const stepFields: Array<Array<keyof RegisterFormValues>> = [
-  ["lastName", "firstName", "middleName", "suffix", "email", "phoneNumber", "birthDate", "sex", "civilStatus"],
+  [
+    "lastName",
+    "firstName",
+    "middleName",
+    "suffix",
+    "email",
+    "phoneNumber",
+    "birthDate",
+    "sex",
+    "civilStatus",
+    "password",
+    "confirmPassword",
+  ],
   ["municipality", "barangay", "addressLine"],
   ["governmentIdType", "governmentIdNumber", "governmentIdFiles"],
-  ["password", "confirmPassword"],
 ];
 
 export function RegisterPage() {
@@ -149,12 +154,16 @@ export function RegisterPage() {
     try {
       const redirectTo = `${window.location.origin}/reset-password`;
       const fullName = [values.firstName, values.middleName, values.lastName, values.suffix]
-        .filter(Boolean)
+        .filter((part) => part?.trim())
         .join(" ");
       await signUp({
         email: values.email,
         password: values.password,
         fullName,
+        firstName: values.firstName,
+        middleName: values.middleName,
+        lastName: values.lastName,
+        suffix: values.suffix,
         redirectTo,
         phoneNumber: values.phoneNumber,
         birthDate: values.birthDate,
@@ -190,10 +199,14 @@ export function RegisterPage() {
               <Input id="firstName" autoComplete="given-name" {...form.register("firstName")} />
               <FieldError message={form.formState.errors.firstName?.message} />
             </Field>
-            <Field label="Middle name (optional)" id="middleName">
-              <Input id="middleName" autoComplete="additional-name" {...form.register("middleName")} />
+            <Field label="Middle name" id="middleName">
+              <Input
+                id="middleName"
+                autoComplete="additional-name"
+                {...form.register("middleName")}
+              />
             </Field>
-            <Field label="Suffix (optional)" id="suffix">
+            <Field label="Suffix" id="suffix">
               <Select id="suffix" {...form.register("suffix")}>
                 <option value="">None</option>
                 <option value="Jr.">Jr.</option>
@@ -233,6 +246,30 @@ export function RegisterPage() {
                 <option value="separated">Separated</option>
               </Select>
               <FieldError message={form.formState.errors.civilStatus?.message} />
+            </Field>
+            <div className="border-t border-[var(--landing-outline)] pt-5 md:col-span-2">
+              <p className="text-sm font-semibold text-foreground">Account credentials</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                These credentials will be used after admin approval.
+              </p>
+            </div>
+            <Field label="Password" id="registerPassword">
+              <Input
+                id="registerPassword"
+                type="password"
+                autoComplete="new-password"
+                {...form.register("password")}
+              />
+              <FieldError message={form.formState.errors.password?.message} />
+            </Field>
+            <Field label="Confirm password" id="confirmPassword">
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                {...form.register("confirmPassword")}
+              />
+              <FieldError message={form.formState.errors.confirmPassword?.message} />
             </Field>
           </div>
         );
@@ -311,32 +348,6 @@ export function RegisterPage() {
               maxFiles={3}
             />
             <FieldError message={form.formState.errors.governmentIdFiles?.message} />
-          </div>
-        );
-
-      default:
-        return (
-          <div className="space-y-5">
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Password" id="registerPassword">
-                <Input
-                  id="registerPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  {...form.register("password")}
-                />
-                <FieldError message={form.formState.errors.password?.message} />
-              </Field>
-              <Field label="Confirm password" id="confirmPassword">
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  {...form.register("confirmPassword")}
-                />
-                <FieldError message={form.formState.errors.confirmPassword?.message} />
-              </Field>
-            </div>
 
             {submitError ? (
               <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -351,16 +362,19 @@ export function RegisterPage() {
             ) : null}
           </div>
         );
+
+      default:
+        return null;
     }
   }
 
-  const stepIcons = [User, MapPin, IdCard, ShieldCheck];
+  const stepIcons = [User, MapPin, IdCard];
 
   return (
     <AuthShell
       eyebrow="Resident Registration"
       title="Create a resident account"
-      description="Submit your registration for admin review. Your account will be activated once an administrator approves it."
+      description="Submit your personal, address, and identity information for admin review. Your account will be activated once an administrator approves it."
       footer={
         <p className="text-sm text-muted-foreground">
           Already registered?{" "}
@@ -374,7 +388,7 @@ export function RegisterPage() {
       }
     >
       {/* Step indicators */}
-      <div className="mb-6 grid max-w-full grid-cols-4 gap-2 overflow-hidden">
+      <div className="mb-6 grid max-w-full grid-cols-3 gap-2 overflow-hidden">
         {steps.map((step, i) => {
           const isDone = i < currentStep;
           const isActive = i === currentStep;
@@ -400,7 +414,8 @@ export function RegisterPage() {
                   color: isDone ? "#10b981" : isActive ? "var(--color-primary, #155b91)" : "var(--color-muted-foreground, #888)",
                 }}
               >
-                {step.title}
+                Step {i + 1}
+                <span className="block normal-case tracking-normal">{step.title}</span>
               </span>
             </div>
           );
@@ -460,13 +475,15 @@ function Field({
   label,
   id,
   children,
+  className,
 }: {
   label: string;
   id: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="space-y-2">
+    <div className={className ? `space-y-2 ${className}` : "space-y-2"}>
       <label className="text-sm font-semibold" htmlFor={id}>
         {label}
       </label>

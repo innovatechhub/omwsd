@@ -8,6 +8,7 @@ import type {
   AdminBarangayMetric,
   AdminDashboardMetrics,
   AdminQueueItem,
+  AdminResidentIdFile,
   AdminResidentRecord,
 } from "@/types/admin";
 
@@ -385,7 +386,7 @@ export async function getAdminResidents() {
   // Query all resident profiles first (every registered resident has a profile row)
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select("id, full_name, email, is_active, created_at")
+    .select("id, full_name, email, phone_number, barangay, municipality, is_active, created_at")
     .eq("role", "resident")
     .order("created_at", { ascending: false });
 
@@ -404,7 +405,9 @@ export async function getAdminResidents() {
   // LEFT join: get resident row details for profiles that have completed their profile
   const { data: residentRows, error: residentError } = await supabase
     .from("residents")
-    .select("id, profile_id, contact_number, is_verified, barangays(name)")
+    .select(
+      "id, profile_id, resident_code, first_name, middle_name, last_name, suffix, birth_date, sex, civil_status, contact_number, address_line, government_id_type, government_id_number, is_verified, verified_at, created_at, barangays(name), municipalities(name)",
+    )
     .in("profile_id", profileIds);
 
   if (residentError) {
@@ -446,15 +449,70 @@ export async function getAdminResidents() {
     const profileId = String(profile.id ?? "");
     const resident = residentByProfileId.get(profileId);
     const barangay = resident?.barangays as Record<string, unknown> | null;
+    const municipality = resident?.municipalities as Record<string, unknown> | null;
     const residentId = resident ? String(resident.id ?? "") : "";
+    const profileCreatedAt =
+      typeof profile.created_at === "string" ? profile.created_at : null;
+    const residentCreatedAt =
+      typeof resident?.created_at === "string" ? resident.created_at : profileCreatedAt;
+    const birthDate = typeof resident?.birth_date === "string" ? resident.birth_date : "";
+    const verifiedAt = typeof resident?.verified_at === "string" ? resident.verified_at : null;
+    const sex = typeof resident?.sex === "string" ? resident.sex : "";
+    const civilStatus =
+      typeof resident?.civil_status === "string" ? resident.civil_status : "";
+    const governmentIdType =
+      typeof resident?.government_id_type === "string" ? resident.government_id_type : "";
+    const governmentIdNumber =
+      typeof resident?.government_id_number === "string" &&
+      resident.government_id_number.trim()
+        ? resident.government_id_number
+        : "-";
 
     return {
       id: residentId || profileId,
       profileId,
+      residentCode:
+        typeof resident?.resident_code === "string" && resident.resident_code.trim()
+          ? resident.resident_code
+          : "-",
       name: String(profile.full_name ?? profile.email ?? "Unnamed resident"),
+      firstName:
+        typeof resident?.first_name === "string" && resident.first_name.trim()
+          ? resident.first_name
+          : "-",
+      middleName:
+        typeof resident?.middle_name === "string" && resident.middle_name.trim()
+          ? resident.middle_name
+          : "-",
+      lastName:
+        typeof resident?.last_name === "string" && resident.last_name.trim()
+          ? resident.last_name
+          : "-",
+      suffix:
+        typeof resident?.suffix === "string" && resident.suffix.trim()
+          ? resident.suffix
+          : "-",
+      email:
+        typeof profile.email === "string" && profile.email.trim() ? profile.email : "-",
       status: resident?.is_verified ? "Verified" : "Pending verification",
       barangay: String(barangay?.name ?? "—"),
+      municipality: String(municipality?.name ?? profile.municipality ?? "-"),
+      addressLine:
+        typeof resident?.address_line === "string" && resident.address_line.trim()
+          ? resident.address_line
+          : "-",
       account: profile.is_active === false ? "Suspended" : "Active",
+      birthDate,
+      birthDateLabel: birthDate ? formatDate(birthDate) : "Not recorded",
+      sex,
+      sexLabel: formatTokenLabel(sex),
+      civilStatus,
+      civilStatusLabel: formatTokenLabel(civilStatus),
+      governmentIdType,
+      governmentIdTypeLabel: formatTokenLabel(governmentIdType),
+      governmentIdNumber,
+      registeredAt: formatDate(residentCreatedAt),
+      verifiedAt: verifiedAt ? formatDate(verifiedAt) : "Not verified",
       contact: resident ? String(resident.contact_number ?? "—") : "—",
       referenceCount: residentId ? (applicationCounts.get(residentId) ?? 0) : 0,
       hasResidentRow: !!resident,
@@ -685,6 +743,27 @@ export async function getApplicationStatusHistory(applicationId: string) {
     createdAt: typeof row.created_at === "string" ? row.created_at : "",
     createdAtLabel: formatDate(typeof row.created_at === "string" ? row.created_at : null),
   }));
+}
+
+export async function getResidentIdFiles(profileId: string): Promise<AdminResidentIdFile[]> {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase.storage
+    .from("ids")
+    .list(profileId, { limit: 20, sortBy: { column: "updated_at", order: "desc" } });
+
+  if (error) {
+    return [];
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .filter((item) => typeof item.name === "string" && item.id !== null)
+    .map((item) => ({
+      name: String(item.name ?? ""),
+      filePath: `${profileId}/${String(item.name ?? "")}`,
+      bucket: "ids",
+      updatedAt: typeof item.updated_at === "string" ? item.updated_at : null,
+    }));
 }
 
 export async function sendResidentFollowUpNotification(

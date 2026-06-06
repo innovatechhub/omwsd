@@ -46,13 +46,39 @@ export interface AdminApplicationCaseDetails {
 export interface AdminResidentRecord {
   id: string;
   profileId: string;
+  residentCode: string;
   name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  suffix: string;
+  email: string;
   status: "Verified" | "Pending verification";
   barangay: string;
+  municipality: string;
+  addressLine: string;
   account: "Active" | "Suspended";
   contact: string;
+  birthDate: string;
+  birthDateLabel: string;
+  sex: string;
+  sexLabel: string;
+  civilStatus: string;
+  civilStatusLabel: string;
+  governmentIdType: string;
+  governmentIdTypeLabel: string;
+  governmentIdNumber: string;
+  registeredAt: string;
+  verifiedAt: string;
   referenceCount: number;
   hasResidentRow: boolean;
+}
+
+export interface AdminResidentIdFile {
+  name: string;
+  filePath: string;
+  bucket: string;
+  updatedAt: string | null;
 }
 
 export interface AdminDashboardMetrics {

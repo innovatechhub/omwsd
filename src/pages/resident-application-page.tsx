@@ -85,7 +85,7 @@ export function ResidentApplicationPage() {
             onClick={() => setIsRequestModalOpen(true)}
           >
             <FilePlus2 className="h-4 w-4" />
-            Request assistance
+            Apply for assistance
           </Button>
         </CardHeader>
         <CardContent>
@@ -130,7 +130,7 @@ export function ResidentApplicationPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    No application found yet. Use the Request assistance button to start.
+                    No application found yet.
                   </TableCell>
                 </TableRow>
               )}
@@ -435,8 +435,8 @@ export function ResidentApplicationPage() {
       <Modal
         open={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
-        title="Request assistance"
-        description="Submit a new request from this page."
+        title="Apply for assistance"
+        description="Complete the form below to submit a new assistance request."
         size="xl"
       >
         <ResidentRequestAssistanceForm
@@ -448,6 +448,7 @@ export function ResidentApplicationPage() {
           }}
         />
       </Modal>
+
     </div>
   );
 }

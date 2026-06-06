@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Search, Send, UserMinus, UserRoundCheck } from "lucide-react";
+import { Eye, FileImage, LoaderCircle, Search, Send, UserMinus, UserRoundCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   getAdminApplications,
   getAdminResidents,
+  getResidentIdFiles,
   sendResidentFollowUpNotification,
   setResidentAccountState,
   verifyResident,
 } from "@/services/admin-service";
+import { createSignedFileUrl } from "@/services/storage-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +74,13 @@ export function AdminResidentsPage() {
   const [followUpResidentId, setFollowUpResidentId] = useState<string | null>(null);
   const [followUpMessage, setFollowUpMessage] = useState("");
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
+  const [viewingIdFileId, setViewingIdFileId] = useState<string | null>(null);
+
+  const idFilesQuery = useQuery({
+    queryKey: ["admin", "residents", "id-files", selectedResident?.profileId ?? null],
+    queryFn: () => getResidentIdFiles(selectedResident!.profileId),
+    enabled: selectedResident !== null,
+  });
 
   const followUpResident = useMemo(
     () => (followUpResidentId ? residents.find((r) => r.id === followUpResidentId) ?? null : null),
@@ -151,6 +160,25 @@ export function AdminResidentsPage() {
       toast.error(error instanceof Error ? error.message : "Unable to send follow-up.");
     } finally {
       setIsSendingFollowUp(false);
+    }
+  }
+
+  async function handleViewIdFile(filePath: string, fileId: string) {
+    const viewer = window.open("about:blank", "_blank");
+    if (viewer) viewer.opener = null;
+    try {
+      setViewingIdFileId(fileId);
+      const url = await createSignedFileUrl("ids", filePath);
+      if (viewer && !viewer.closed) {
+        viewer.location.replace(url);
+      } else {
+        window.location.assign(url);
+      }
+    } catch {
+      if (viewer && !viewer.closed) viewer.close();
+      toast.error("Unable to open this file.");
+    } finally {
+      setViewingIdFileId((current) => (current === fileId ? null : current));
     }
   }
 
@@ -235,10 +263,10 @@ export function AdminResidentsPage() {
                       </Badge>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <DetailRow label="Barangay" value={resident.barangay} />
-                      <DetailRow label="Account" value={resident.account === "Suspended" ? "Pending approval" : resident.account} />
-                      <DetailRow label="Requests" value={String(resident.referenceCount)} />
-                      <DetailRow label="Status" value={resident.status} />
+                      <Field label="Barangay" value={resident.barangay} />
+                      <Field label="Account" value={resident.account === "Suspended" ? "Pending approval" : resident.account} />
+                      <Field label="Requests" value={String(resident.referenceCount)} />
+                      <Field label="Status" value={resident.status} />
                     </div>
                   </button>
                 ))}
@@ -360,6 +388,7 @@ export function AdminResidentsPage() {
         onClose={closeResidentModal}
         title="Resident management"
         description="Review profile status and run verification or account actions."
+        size="xl"
         footer={
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeResidentModal}>
@@ -369,7 +398,7 @@ export function AdminResidentsPage() {
         }
       >
         {selectedResident ? (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {selectedResident.account === "Suspended" && (
               <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 <span className="mt-0.5 shrink-0 font-bold">!</span>
@@ -390,10 +419,11 @@ export function AdminResidentsPage() {
               </div>
             )}
 
-            <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3">
+            {/* Identity header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
               <div>
-                <p className="font-medium">{selectedResident.name}</p>
-                <p className="text-sm text-muted-foreground">{selectedResident.contact} · {selectedResident.barangay}</p>
+                <p className="text-lg font-semibold text-foreground">{selectedResident.name}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{selectedResident.residentCode}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={selectedResident.account === "Active" ? "secondary" : "outline"}>
@@ -405,13 +435,93 @@ export function AdminResidentsPage() {
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3">
+            {/* Personal information */}
+            <FieldGroup title="Personal information">
+              <Field label="First name" value={selectedResident.firstName} />
+              <Field label="Middle name" value={selectedResident.middleName} />
+              <Field label="Last name" value={selectedResident.lastName} />
+              <Field label="Suffix" value={selectedResident.suffix} />
+              <Field label="Birth date" value={selectedResident.birthDateLabel} />
+              <Field label="Sex" value={selectedResident.sexLabel} />
+              <Field label="Civil status" value={selectedResident.civilStatusLabel} />
+            </FieldGroup>
+
+            {/* Contact and address */}
+            <FieldGroup title="Contact and address">
+              <Field label="Email" value={selectedResident.email} />
+              <Field label="Phone" value={selectedResident.contact} />
+              <Field label="Municipality" value={selectedResident.municipality} />
+              <Field label="Barangay" value={selectedResident.barangay} />
+              <Field label="Street address" value={selectedResident.addressLine} className="sm:col-span-2" />
+            </FieldGroup>
+
+            {/* Account review */}
+            <FieldGroup title="Account review">
+              <Field
+                label="Account status"
+                value={selectedResident.account === "Suspended" ? "Pending approval" : selectedResident.account}
+              />
+              <Field label="Verification" value={selectedResident.status} />
+              <Field label="Government ID type" value={selectedResident.governmentIdTypeLabel} />
+              <Field label="Government ID number" value={selectedResident.governmentIdNumber} />
+              <Field label="Registered" value={selectedResident.registeredAt} />
+              <Field label="Verified at" value={selectedResident.verifiedAt} />
+              <Field label="Total requests" value={String(selectedResident.referenceCount)} />
+            </FieldGroup>
+
+            {/* Government ID uploads */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Government ID uploads
+              </p>
+              {idFilesQuery.isLoading ? (
+                <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  Loading uploaded IDs...
+                </div>
+              ) : idFilesQuery.data && idFilesQuery.data.length > 0 ? (
+                <div className="divide-y rounded-xl border">
+                  {idFilesQuery.data.map((file) => (
+                    <div
+                      key={file.filePath}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileImage className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {file.name}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0 gap-1.5"
+                        disabled={viewingIdFileId === file.filePath}
+                        onClick={() => void handleViewIdFile(file.filePath, file.filePath)}
+                      >
+                        {viewingIdFileId === file.filePath
+                          ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                          : <Eye className="h-3.5 w-3.5" />}
+                        View
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
+                  No government ID files uploaded yet.
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 border-t pt-4">
               {selectedResident.account === "Suspended" ? (
                 <Button
                   type="button"
                   disabled={isSaving}
                   onClick={() => void handleApproveAccount(selectedResident)}
-                  className="sm:col-span-3"
                 >
                   <UserRoundCheck className="h-4 w-4" />
                   Approve &amp; activate account
@@ -470,13 +580,22 @@ function SummaryCard({ label, value, highlight }: { label: string; value: string
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function FieldGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-md border bg-background px-3 py-2">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
+    <div>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {title}
       </p>
-      <p className="mt-1 font-medium text-foreground">{value}</p>
+      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className={className}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
