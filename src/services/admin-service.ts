@@ -11,6 +11,19 @@ import type {
   AdminResidentIdFile,
   AdminResidentRecord,
 } from "@/types/admin";
+import type {
+  AdminAppointmentRecord,
+  AdminSectorRegistrationRecord,
+  AppointmentSlot,
+  CreateAppointmentSlotInput,
+  SectorRegistrationStatus,
+  SectorType,
+} from "@/types/sector";
+import {
+  formatAppointmentStatusLabel,
+  formatSectorStatusLabel,
+  formatSectorTypeLabel,
+} from "@/services/sector-service";
 
 function assertSupabaseConfigured() {
   if (!isSupabaseConfigured) {

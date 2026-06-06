@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import type { SectorRegistrationStatus } from "@/types/sector";
 
 interface Props {

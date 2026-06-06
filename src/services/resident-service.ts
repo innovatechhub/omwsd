@@ -309,10 +309,13 @@ export async function getResidentPortalSnapshot(): Promise<ResidentPortalSnapsho
   const unreadNotifications = notifications.filter((notification) => !notification.isRead).length;
   const applicationRow = ((applicationRows ?? []) as Array<Record<string, unknown>>)[0];
 
+  const residentId =
+    residentRow && typeof residentRow.id === "string" ? residentRow.id : null;
   const profileIsComplete = !!residentRow;
 
   if (!applicationRow) {
     return {
+      residentId,
       application: null,
       notifications,
       unreadNotifications,
@@ -412,6 +415,7 @@ export async function getResidentPortalSnapshot(): Promise<ResidentPortalSnapsho
   application.requiresAction = hasResidentAction(status, requirements, notifications);
 
   return {
+    residentId,
     application,
     notifications,
     unreadNotifications,

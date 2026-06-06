@@ -6,6 +6,7 @@ import {
   LogOut,
   Settings,
   ShieldCheck,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -20,6 +21,7 @@ const adminNav = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/applications", label: "Applications", icon: FileText },
   { to: "/admin/residents", label: "Residents", icon: Users },
+  { to: "/admin/sectors", label: "Sector Registrations", icon: UserCheck },
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];

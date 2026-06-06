@@ -76,6 +76,7 @@ export interface ResidentNotification {
 }
 
 export interface ResidentPortalSnapshot {
+  residentId: string | null;
   application: ResidentApplicationSummary | null;
   notifications: ResidentNotification[];
   unreadNotifications: number;

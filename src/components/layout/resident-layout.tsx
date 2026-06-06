@@ -9,6 +9,7 @@ import {
   LogOut,
   ShieldCheck,
   UserCircle2,
+  Users,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -29,6 +30,7 @@ import {
 const residentNav = [
   { to: "/resident", label: "Dashboard", icon: LayoutDashboard },
   { to: "/resident/application", label: "My Application", icon: FileCheck2 },
+  { to: "/resident/sectors", label: "Sector Registration", icon: Users },
 ];
 
 export function ResidentLayout() {

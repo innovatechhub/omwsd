@@ -8,6 +8,7 @@ import { RedirectIfAuthenticated, RequireAdmin, RequireResident } from "@/featur
 import { AdminApplicationsPage } from "@/pages/admin-applications-page";
 import { AdminDashboardPage } from "@/pages/admin-dashboard-page";
 import { AdminResidentsPage } from "@/pages/admin-residents-page";
+import { AdminSectorsPage } from "@/pages/admin-sectors-page";
 import { AnnouncementsPage } from "@/pages/announcements-page";
 import { ContactPage } from "@/pages/contact-page";
 import { FaqPage } from "@/pages/faq-page";
@@ -21,6 +22,8 @@ import { ReportsPage } from "@/pages/reports-page";
 import { RequirementsPage } from "@/pages/requirements-page";
 import { ResidentApplicationPage } from "@/pages/resident-application-page";
 import { ResidentDashboardPage } from "@/pages/resident-dashboard-page";
+import { ResidentSectorRegistrationPage } from "@/pages/resident-sector-registration-page";
+import { ResidentSectorsPage } from "@/pages/resident-sectors-page";
 import { ResidentUploadsPage } from "@/pages/resident-uploads-page";
 import { ResetPasswordPage } from "@/pages/reset-password-page";
 import { ServiceDetailsPage } from "@/pages/service-details-page";
@@ -79,6 +82,10 @@ const router = createBrowserRouter([
                 element: <AdminResidentsPage />,
               },
               {
+                path: "sectors",
+                element: <AdminSectorsPage />,
+              },
+              {
                 path: "reports",
                 element: <ReportsPage />,
               },
@@ -101,6 +108,14 @@ const router = createBrowserRouter([
               {
                 path: "application",
                 element: <ResidentApplicationPage />,
+              },
+              {
+                path: "sectors",
+                element: <ResidentSectorsPage />,
+              },
+              {
+                path: "sectors/:sectorType",
+                element: <ResidentSectorRegistrationPage />,
               },
               {
                 path: "uploads",
