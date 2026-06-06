@@ -96,7 +96,22 @@ export function ResidentSectorRegistrationPage() {
   const [idNumber, setIdNumber] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const step1FileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [step1File, setStep1File] = useState<File | null>(null);
+  const [step1Preview, setStep1Preview] = useState<string | null>(null);
+
+  function handleStep1FileChange(file: File | null) {
+    setStep1File(file);
+    if (!file) { setStep1Preview(null); return; }
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => setStep1Preview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setStep1Preview(null);
+    }
+  }
 
   if (!meta) {
     return (
@@ -116,13 +131,23 @@ export function ResidentSectorRegistrationPage() {
     if (!selectedIdType) { toast.error("Please select an ID/document type."); return; }
     if (!residentId)      { toast.error("Resident record not found. Please complete your profile first."); return; }
     try {
-      await createMutation.mutateAsync({
+      const registrationId = await createMutation.mutateAsync({
         residentId,
         sectorType: sector,
         sectorIdType: selectedIdType,
         sectorIdNumber: idNumber || undefined,
       });
-      toast.success("Registration created. Next, book your appointment.");
+
+      if (step1File) {
+        await uploadMutation.mutateAsync({
+          sectorRegistrationId: registrationId,
+          sectorType: sector,
+          file: step1File,
+        });
+        toast.success("Registration created and document uploaded. Next, book your appointment.");
+      } else {
+        toast.success("Registration created. Next, book your appointment.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Unable to create registration.");
     }
@@ -262,7 +287,7 @@ export function ResidentSectorRegistrationPage() {
         <div className="portal-card p-6 space-y-5">
           <div>
             <h2 className="text-base font-bold text-[var(--portal-ink)]">Step 1 — Registration info</h2>
-            <p className="mt-1 text-sm text-[var(--portal-muted)]">Tell us what document you will present during your appointment.</p>
+            <p className="mt-1 text-sm text-[var(--portal-muted)]">Fill in your document details and upload a photo or scan of your ID.</p>
           </div>
           <div className="space-y-4">
             <div>
@@ -292,14 +317,68 @@ export function ResidentSectorRegistrationPage() {
                 className="w-full rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-accent)]"
               />
             </div>
+
+            {/* Photo / document upload */}
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">
+                Upload photo / scan of ID <span className="text-[var(--portal-muted)] font-normal normal-case">(optional — you can also upload later)</span>
+              </label>
+              <input
+                ref={step1FileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.pdf"
+                className="hidden"
+                onChange={(e) => handleStep1FileChange(e.target.files?.[0] ?? null)}
+              />
+
+              {step1File ? (
+                <div className="rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-3">
+                  {step1Preview ? (
+                    <div className="mb-3 overflow-hidden rounded-lg border border-[var(--portal-outline)] bg-white">
+                      <img
+                        src={step1Preview}
+                        alt="ID preview"
+                        className="max-h-48 w-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2.5">
+                      <FileUp className="h-5 w-5 shrink-0 text-[var(--portal-muted)]" />
+                      <span className="truncate text-sm text-[var(--portal-ink)]">{step1File.name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-xs text-[var(--portal-muted)]">{step1File.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => { handleStep1FileChange(null); if (step1FileInputRef.current) step1FileInputRef.current.value = ""; }}
+                      className="shrink-0 text-xs font-semibold text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => step1FileInputRef.current?.click()}
+                  className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[var(--portal-outline)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-blue-50/40"
+                >
+                  <Upload className="h-7 w-7 text-[var(--portal-muted)]" />
+                  <span className="text-sm font-semibold text-[var(--portal-ink)]">Click to select photo or file</span>
+                  <span className="text-xs text-[var(--portal-muted)]">JPG, PNG or PDF · Max 5 MB</span>
+                </button>
+              )}
+            </div>
           </div>
+
           <Button
             onClick={() => void handleCreate()}
-            disabled={createMutation.isPending || !selectedIdType}
+            disabled={createMutation.isPending || uploadMutation.isPending || !selectedIdType}
             className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
           >
-            {createMutation.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            Continue to book appointment
+            {(createMutation.isPending || uploadMutation.isPending) ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            {step1File ? "Submit and continue" : "Continue to book appointment"}
           </Button>
         </div>
       )}
