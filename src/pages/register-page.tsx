@@ -21,7 +21,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AuthShell } from "@/features/auth/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
-import { signUp } from "@/services/auth-service";
+import { signUp, uploadRegistrationGovernmentIds } from "@/services/auth-service";
 import {
   getPandanAddressData,
   type PandanBarangay,
@@ -156,7 +156,7 @@ export function RegisterPage() {
       const fullName = [values.firstName, values.middleName, values.lastName, values.suffix]
         .filter((part) => part?.trim())
         .join(" ");
-      await signUp({
+      const signUpData = await signUp({
         email: values.email,
         password: values.password,
         fullName,
@@ -175,6 +175,14 @@ export function RegisterPage() {
         governmentIdType: values.governmentIdType,
         governmentIdNumber: values.governmentIdNumber,
       });
+
+      const userId = signUpData.user?.id;
+
+      if (!userId) {
+        throw new Error("Account was created, but the uploaded government ID could not be linked.");
+      }
+
+      await uploadRegistrationGovernmentIds(userId, values.governmentIdFiles);
 
       toast.success("Registration submitted. Your account is pending admin approval before you can sign in.");
       navigate("/login", { replace: true });

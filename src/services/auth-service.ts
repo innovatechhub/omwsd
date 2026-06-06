@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveMutation } from "@/services/mutation-service";
 import { resolveNullableQuery } from "@/services/query-service";
+import { uploadFile } from "@/services/storage-service";
 
 export interface SignInCredentials {
   email: string;
@@ -103,6 +104,55 @@ export async function signUp({
       },
     }),
   );
+}
+
+function sanitizeFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+export async function uploadRegistrationGovernmentIds(userId: string, files: File[]) {
+  assertSupabaseConfigured();
+
+  if (files.length === 0) {
+    return;
+  }
+
+  const uploaded: Array<{
+    bucket: string;
+    file_path: string;
+    file_name: string;
+    mime_type: string;
+    size_bytes: number;
+    uploaded_by: string;
+  }> = [];
+
+  for (const file of files) {
+    const filePath =
+      `${userId}/registration/` +
+      `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${sanitizeFileName(file.name)}`;
+
+    await uploadFile({
+      bucket: "ids",
+      path: filePath,
+      file,
+      contentType: file.type,
+    });
+
+    uploaded.push({
+      bucket: "ids",
+      file_path: filePath,
+      file_name: file.name,
+      mime_type: file.type,
+      size_bytes: file.size,
+      uploaded_by: userId,
+    });
+  }
+
+  const { error } = await supabase.from("uploaded_documents").insert(uploaded);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function signOut() {

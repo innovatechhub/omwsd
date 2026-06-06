@@ -761,22 +761,23 @@ export async function getApplicationStatusHistory(applicationId: string) {
 export async function getResidentIdFiles(profileId: string): Promise<AdminResidentIdFile[]> {
   assertSupabaseConfigured();
 
-  const { data, error } = await supabase.storage
-    .from("ids")
-    .list(profileId, { limit: 20, sortBy: { column: "updated_at", order: "desc" } });
+  const { data, error } = await supabase
+    .from("uploaded_documents")
+    .select("bucket, file_path, file_name, created_at")
+    .eq("bucket", "ids")
+    .eq("uploaded_by", profileId)
+    .order("created_at", { ascending: false });
 
   if (error) {
     return [];
   }
 
-  return (data ?? [])
-    .filter((item) => typeof item.name === "string" && item.id !== null)
-    .map((item) => ({
-      name: String(item.name ?? ""),
-      filePath: `${profileId}/${String(item.name ?? "")}`,
-      bucket: "ids",
-      updatedAt: typeof item.updated_at === "string" ? item.updated_at : null,
-    }));
+  return ((data ?? []) as Array<Record<string, unknown>>).map((item) => ({
+    name: String(item.file_name ?? "Government ID"),
+    filePath: String(item.file_path ?? ""),
+    bucket: String(item.bucket ?? "ids"),
+    updatedAt: typeof item.created_at === "string" ? item.created_at : null,
+  }));
 }
 
 export async function sendResidentFollowUpNotification(
