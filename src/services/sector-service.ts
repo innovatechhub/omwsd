@@ -109,11 +109,16 @@ function mapSlot(row: Record<string, unknown>): AppointmentSlot {
   };
 }
 
-function mapAppointment(row: Record<string, unknown>, slot?: Record<string, unknown>): Appointment {
+function mapAppointment(
+  row: Record<string, unknown>,
+  slot?: Record<string, unknown>,
+  reg?: Record<string, unknown>,
+): Appointment {
   const status = String(row.status ?? "booked") as Appointment["status"];
   const slotDate = typeof slot?.slot_date === "string" ? slot.slot_date : "";
   const slotTime = typeof slot?.slot_time === "string" ? slot.slot_time : "";
   const slotLabel = typeof slot?.slot_label === "string" ? slot.slot_label : formatSlotLabel(slotDate, slotTime);
+  const sectorType = typeof reg?.sector_type === "string" ? (reg.sector_type as SectorType) : null;
   return {
     id: String(row.id ?? ""),
     sectorRegistrationId: String(row.sector_registration_id ?? ""),
@@ -122,6 +127,8 @@ function mapAppointment(row: Record<string, unknown>, slot?: Record<string, unkn
     slotId: String(row.slot_id ?? ""),
     slotLabel,
     slotDate,
+    sectorType,
+    sectorTypeLabel: sectorType ? formatSectorTypeLabel(sectorType) : null,
     status,
     statusLabel: formatAppointmentStatusLabel(status),
     notes: typeof row.notes === "string" ? row.notes : null,
@@ -364,4 +371,85 @@ export async function getAppointmentForRegistration(sectorRegistrationId: string
   const row = data as Record<string, unknown>;
   const slot = row.appointment_slots as Record<string, unknown> | null;
   return mapAppointment(row, slot ?? undefined);
+}
+
+export async function getResidentAppointments(): Promise<Appointment[]> {
+  assertSupabaseConfigured();
+  const user = await requireAuthenticatedUser();
+
+  // Select only appointment fields + slot. Avoid joining sector_registrations
+  // as the nested RLS may silently drop rows when read through a join.
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("*, appointment_slots(slot_date, slot_time, slot_label)")
+    .eq("profile_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  if (!data || data.length === 0) return [];
+
+  // Fetch sector types for all registration ids in one query
+  const rows = data as Array<Record<string, unknown>>;
+  const regIds = [...new Set(rows.map((r) => String(r.sector_registration_id ?? "")).filter(Boolean))];
+
+  const sectorByRegId = new Map<string, SectorType>();
+  if (regIds.length > 0) {
+    const { data: regs } = await supabase
+      .from("sector_registrations")
+      .select("id, sector_type")
+      .in("id", regIds);
+    for (const r of (regs ?? []) as Array<Record<string, unknown>>) {
+      sectorByRegId.set(String(r.id ?? ""), String(r.sector_type ?? "") as SectorType);
+    }
+  }
+
+  return rows.map((row) => {
+    const slot = row.appointment_slots as Record<string, unknown> | null;
+    const regId = String(row.sector_registration_id ?? "");
+    const sectorType = sectorByRegId.get(regId) ?? null;
+    return mapAppointment(row, slot ?? undefined, sectorType ? { sector_type: sectorType } : undefined);
+  });
+}
+
+export async function bookStandaloneAppointment(input: {
+  sectorRegistrationId: string;
+  residentId: string;
+  slotId: string;
+}): Promise<void> {
+  assertSupabaseConfigured();
+  const user = await requireAuthenticatedUser();
+
+  const { data: slotData, error: slotError } = await supabase
+    .from("appointment_slots")
+    .select("booked_count, max_capacity")
+    .eq("id", input.slotId)
+    .single();
+
+  if (slotError) throw slotError;
+  const slot = slotData as Record<string, unknown>;
+  if ((slot.booked_count as number) >= (slot.max_capacity as number)) {
+    throw new Error("This slot is now full. Please choose another time.");
+  }
+
+  // Cancel any existing active appointment for this registration before booking a new one.
+  // This handles the unique constraint on sector_registration_id until the migration is applied.
+  await supabase
+    .from("appointments")
+    .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+    .eq("sector_registration_id", input.sectorRegistrationId)
+    .eq("profile_id", user.id)
+    .in("status", ["booked", "confirmed"]);
+
+  const { error: apptError } = await supabase
+    .from("appointments")
+    .insert({
+      sector_registration_id: input.sectorRegistrationId,
+      resident_id: input.residentId,
+      profile_id: user.id,
+      slot_id: input.slotId,
+      status: "booked",
+    });
+
+  if (apptError) throw apptError;
 }

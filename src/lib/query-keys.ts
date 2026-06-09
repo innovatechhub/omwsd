@@ -9,6 +9,7 @@ export const queryKeys = {
     sectorRegistrations: (userId: string) => ["resident", "sector", userId] as const,
     appointmentSlots: (sectorType: string) => ["sector", "slots", sectorType] as const,
     appointment: (sectorRegistrationId: string) => ["resident", "appointment", sectorRegistrationId] as const,
+    appointments: (userId: string) => ["resident", "appointments", userId] as const,
   },
   admin: {
     sectorRegistrations: (filters?: object) => ["admin", "sector-registrations", filters ?? {}] as const,

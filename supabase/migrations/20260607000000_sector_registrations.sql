@@ -51,7 +51,7 @@ create table if not exists public.appointment_slots (
   created_by    uuid references auth.users(id) on delete set null,
   created_at    timestamptz not null default timezone('utc', now()),
   updated_at    timestamptz not null default timezone('utc', now()),
-  unique (slot_date, slot_time, coalesce(sector_type, ''))
+  unique (slot_date, slot_time, sector_type)
 );
 
 create table if not exists public.appointments (
@@ -81,6 +81,11 @@ alter table public.sector_registrations
 -- ─────────────────────────────────────────────────────────────
 -- 2. Indexes
 -- ─────────────────────────────────────────────────────────────
+
+-- Unique slot per date+time when sector_type is NULL (all-sector slots)
+create unique index if not exists idx_appointment_slots_date_time_null_sector
+  on public.appointment_slots (slot_date, slot_time)
+  where sector_type is null;
 
 create index if not exists idx_sector_registrations_resident_id  on public.sector_registrations(resident_id);
 create index if not exists idx_sector_registrations_profile_id   on public.sector_registrations(profile_id);

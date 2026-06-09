@@ -52,6 +52,8 @@ export interface Appointment {
   slotId: string;
   slotLabel: string;
   slotDate: string;
+  sectorType: SectorType | null;
+  sectorTypeLabel: string | null;
   status: "booked" | "confirmed" | "completed" | "cancelled" | "no_show";
   statusLabel: string;
   notes: string | null;

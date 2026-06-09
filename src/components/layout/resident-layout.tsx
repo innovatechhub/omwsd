@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   Bell,
+  CalendarDays,
   CheckCheck,
   ExternalLink,
   FileCheck2,
@@ -20,6 +21,7 @@ import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
+import { useSectorRegistrations } from "@/hooks/use-sector-registrations";
 import { queryKeys } from "@/lib/query-keys";
 import { signOut } from "@/services/auth-service";
 import {
@@ -27,7 +29,7 @@ import {
   markResidentNotificationRead,
 } from "@/services/resident-service";
 
-const residentNav = [
+const baseNav = [
   { to: "/resident", label: "Dashboard", icon: LayoutDashboard },
   { to: "/resident/application", label: "My Application", icon: FileCheck2 },
   { to: "/resident/sectors", label: "Sector Registration", icon: Users },
@@ -38,6 +40,12 @@ export function ResidentLayout() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const portalQuery = useResidentPortal();
+  const registrationsQuery = useSectorRegistrations(user?.id ?? "");
+  const hasVerifiedSector = (registrationsQuery.data ?? []).some((r) => r.status === "verified");
+
+  const residentNav = hasVerifiedSector
+    ? [...baseNav, { to: "/resident/appointments", label: "My Appointments", icon: CalendarDays }]
+    : baseNav;
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const [pendingNotificationId, setPendingNotificationId] = useState<string | null>(null);

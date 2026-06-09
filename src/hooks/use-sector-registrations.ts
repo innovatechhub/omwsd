@@ -10,6 +10,8 @@ import {
   uploadSectorDocument,
   getAvailableAppointmentSlots,
   getAppointmentForRegistration,
+  getResidentAppointments,
+  bookStandaloneAppointment,
 } from "@/services/sector-service";
 import type { SectorType } from "@/types/sector";
 
@@ -92,6 +94,25 @@ export function useUploadSectorDocument(userId: string) {
     mutationFn: uploadSectorDocument,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.resident.sectorRegistrations(userId) });
+    },
+  });
+}
+
+export function useResidentAppointments(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.resident.appointments(userId),
+    queryFn: getResidentAppointments,
+    enabled: !!userId,
+  });
+}
+
+export function useBookStandaloneAppointment(userId: string, sectorType: SectorType) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: bookStandaloneAppointment,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.resident.appointments(userId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.resident.appointmentSlots(sectorType) });
     },
   });
 }

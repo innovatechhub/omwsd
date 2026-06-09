@@ -7,6 +7,7 @@ import {
   Clock,
   FileUp,
   LoaderCircle,
+  Lock,
   RefreshCw,
   Upload,
   XCircle,
@@ -24,6 +25,7 @@ import {
   useCreateSectorRegistration,
   useResubmitSectorRegistration,
   useSectorRegistration,
+  useSectorRegistrations,
   useUploadSectorDocument,
 } from "@/hooks/use-sector-registrations";
 import { AppointmentSlotPicker } from "@/components/sector/appointment-slot-picker";
@@ -79,6 +81,9 @@ export function ResidentSectorRegistrationPage() {
 
   const regQuery = useSectorRegistration(sector, userId);
   const reg = regQuery.data ?? null;
+  const registrationsQuery = useSectorRegistrations(userId);
+  const registrations = registrationsQuery.data ?? [];
+  const verifiedRegistration = registrations.find((r) => r.status === "verified");
 
   const apptQuery = useAppointmentForRegistration(reg?.id ?? null);
   const appointment = apptQuery.data ?? null;
@@ -121,10 +126,11 @@ export function ResidentSectorRegistrationPage() {
     );
   }
 
-  const isLoading = regQuery.isLoading || portalQuery.isLoading;
+  const isLoading = regQuery.isLoading || portalQuery.isLoading || registrationsQuery.isLoading;
   const currentStep = reg ? stepIndex(reg.status) : -1;
   const isVerified = reg?.status === "verified";
   const isRejected = reg?.status === "rejected";
+  const isBlockedByVerifiedSector = !!verifiedRegistration && verifiedRegistration.sectorType !== sector && !reg;
 
   // ── Step 1: Create registration ────────────────────────────
   async function handleCreate() {
@@ -206,6 +212,39 @@ export function ResidentSectorRegistrationPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <LoaderCircle className="h-7 w-7 animate-spin text-[var(--portal-accent)]" />
+      </div>
+    );
+  }
+
+  if (isBlockedByVerifiedSector) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Link to="/resident/sectors" className="inline-flex items-center gap-1.5 text-sm text-[var(--portal-muted)] hover:text-[var(--portal-ink)]">
+            <ArrowLeft className="h-4 w-4" />
+            Sector Registration
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold text-[var(--portal-ink)]">{meta.label}</h1>
+        </div>
+
+        <div className="portal-card flex items-start gap-4 p-6">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+            <Lock className="h-5 w-5 text-slate-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-bold text-[var(--portal-ink)]">Sector unavailable</p>
+            <p className="mt-1 text-sm text-[var(--portal-muted)]">
+              Your {verifiedRegistration.sectorTypeLabel} registration is already verified, so new registrations for other sectors are not available.
+            </p>
+            <Link
+              to="/resident/sectors"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--portal-accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--portal-accent-strong)]"
+            >
+              Back to sectors
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

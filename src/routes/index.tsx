@@ -22,6 +22,7 @@ import { ReportsPage } from "@/pages/reports-page";
 import { RequirementsPage } from "@/pages/requirements-page";
 import { ResidentApplicationPage } from "@/pages/resident-application-page";
 import { ResidentDashboardPage } from "@/pages/resident-dashboard-page";
+import { ResidentAppointmentsPage } from "@/pages/resident-appointments-page";
 import { ResidentSectorRegistrationPage } from "@/pages/resident-sector-registration-page";
 import { ResidentSectorsPage } from "@/pages/resident-sectors-page";
 import { ResidentUploadsPage } from "@/pages/resident-uploads-page";
@@ -116,6 +117,10 @@ const router = createBrowserRouter([
               {
                 path: "sectors/:sectorType",
                 element: <ResidentSectorRegistrationPage />,
+              },
+              {
+                path: "appointments",
+                element: <ResidentAppointmentsPage />,
               },
               {
                 path: "uploads",

@@ -962,12 +962,12 @@ export async function reviewSectorRegistration(
 export async function getAdminAppointments(date?: string): Promise<AdminAppointmentRecord[]> {
   assertSupabaseConfigured();
 
+  // Avoid nested joins through residents/barangays — subject to RLS and may silently drop rows.
+  // Fetch appointments with only slot + profile joins, then enrich with registration data separately.
   const { data, error } = await supabase
     .from("appointments")
     .select(`
-      id, sector_registration_id, status, notes, created_at,
-      sector_registrations(sector_type),
-      residents(resident_code, barangays(name)),
+      id, sector_registration_id, resident_id, profile_id, status, notes, created_at,
       profiles(full_name),
       appointment_slots(slot_label, slot_date)
     `)
@@ -975,27 +975,50 @@ export async function getAdminAppointments(date?: string): Promise<AdminAppointm
 
   if (error) throw error;
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  if (rows.length === 0) return [];
+
+  // Batch-fetch sector_registrations for sector_type + resident_code + barangay
+  const regIds = [...new Set(rows.map((r) => String(r.sector_registration_id ?? "")).filter(Boolean))];
+  const regMap = new Map<string, { sectorType: SectorType; residentCode: string; barangay: string }>();
+
+  if (regIds.length > 0) {
+    const { data: regs } = await supabase
+      .from("sector_registrations")
+      .select("id, sector_type, residents(resident_code, barangays(name))")
+      .in("id", regIds);
+
+    for (const r of (regs ?? []) as Array<Record<string, unknown>>) {
+      const resident = r.residents as Record<string, unknown> | null;
+      const barangay = resident?.barangays as Record<string, unknown> | null;
+      regMap.set(String(r.id ?? ""), {
+        sectorType: String(r.sector_type ?? "pwd") as SectorType,
+        residentCode: String(resident?.resident_code ?? "—"),
+        barangay: String(barangay?.name ?? "—"),
+      });
+    }
+  }
+
+  return rows
     .filter((row) => {
       if (!date) return true;
       const slot = row.appointment_slots as Record<string, unknown> | null;
       return slot?.slot_date === date;
     })
     .map((row) => {
-      const reg = row.sector_registrations as Record<string, unknown> | null;
-      const resident = row.residents as Record<string, unknown> | null;
       const profile = row.profiles as Record<string, unknown> | null;
-      const barangay = resident?.barangays as Record<string, unknown> | null;
       const slot = row.appointment_slots as Record<string, unknown> | null;
-      const sectorType = String(reg?.sector_type ?? "pwd") as SectorType;
+      const regId = String(row.sector_registration_id ?? "");
+      const regInfo = regMap.get(regId);
+      const sectorType = regInfo?.sectorType ?? "pwd";
       const status = String(row.status ?? "booked") as AdminAppointmentRecord["status"];
 
       return {
         id: String(row.id ?? ""),
-        sectorRegistrationId: String(row.sector_registration_id ?? ""),
+        sectorRegistrationId: regId,
         residentName: String(profile?.full_name ?? "Unknown"),
-        residentCode: String(resident?.resident_code ?? "—"),
-        barangay: String(barangay?.name ?? "—"),
+        residentCode: regInfo?.residentCode ?? "—",
+        barangay: regInfo?.barangay ?? "—",
         sectorType,
         sectorTypeLabel: formatSectorTypeLabel(sectorType),
         slotLabel: String(slot?.slot_label ?? "—"),

@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Clock, FileSearch, ShieldCheck, Users, XCircle } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Clock, FileSearch, Lock, ShieldCheck, Users, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useSectorRegistrations } from "@/hooks/use-sector-registrations";
@@ -58,6 +58,9 @@ export function ResidentSectorsPage() {
     return acc;
   }, {});
 
+  const verifiedRegistration = registrations.find((r) => r.status === "verified");
+  const hasVerified = !!verifiedRegistration;
+
   return (
     <div className="space-y-8">
       <div>
@@ -90,21 +93,50 @@ export function ResidentSectorsPage() {
         </ol>
       </div>
 
+      {/* Appointments shortcut — only shown once at least one sector is verified */}
+      {hasVerified && (
+        <div className="flex items-center gap-4 rounded-xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100">
+            <CalendarDays className="h-6 w-6 text-green-700" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-green-800">Appointments available</p>
+            <p className="text-xs text-green-700 mt-0.5">
+              Your sector registration is verified. You can now book OMSWD office appointments anytime.
+            </p>
+          </div>
+          <Link
+            to="/resident/appointments"
+            className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+          >
+            Manage
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+
       {/* Sector tiles */}
       <div className="grid gap-5 md:grid-cols-3">
         {SECTORS.map((sector) => {
           const reg = regByType[sector.type];
           const isVerified = reg?.status === "verified";
+          const isUnavailable = hasVerified && !reg;
 
           return (
             <div
               key={sector.type}
-              className={`relative flex flex-col rounded-xl border bg-gradient-to-br p-5 ${sector.color}`}
+              className={`relative flex flex-col rounded-xl border bg-gradient-to-br p-5 ${sector.color} ${isUnavailable ? "opacity-75" : ""}`}
             >
               {isVerified && (
                 <span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Verified
+                </span>
+              )}
+              {isUnavailable && (
+                <span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                  <Lock className="h-3.5 w-3.5" />
+                  Unavailable
                 </span>
               )}
 
@@ -129,19 +161,30 @@ export function ResidentSectorsPage() {
                     <p className="mt-1 line-clamp-2 text-xs text-[var(--portal-muted)]">{reg.adminRemarks}</p>
                   )}
                 </div>
+              ) : isUnavailable ? (
+                <div className="mb-4 rounded-lg border border-dashed border-white/80 bg-white/40 px-3 py-2 text-xs text-[var(--portal-muted)]">
+                  Not available after your {verifiedRegistration?.sectorTypeLabel} registration was verified.
+                </div>
               ) : (
                 <div className="mb-4 rounded-lg border border-dashed border-white/80 bg-white/40 px-3 py-2 text-xs text-[var(--portal-muted)]">
                   Not yet registered
                 </div>
               )}
 
-              <Link
-                to={`/resident/sectors/${sector.type}`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[var(--portal-ink)] shadow-sm transition-colors hover:bg-white/80"
-              >
-                {reg ? "View registration" : "Register now"}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              {isUnavailable ? (
+                <span className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--portal-muted)] shadow-sm">
+                  Unavailable
+                  <Lock className="h-4 w-4" />
+                </span>
+              ) : (
+                <Link
+                  to={`/resident/sectors/${sector.type}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[var(--portal-ink)] shadow-sm transition-colors hover:bg-white/80"
+                >
+                  {reg ? "View registration" : "Register now"}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
             </div>
           );
         })}

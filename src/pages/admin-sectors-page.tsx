@@ -17,10 +17,12 @@ import { toast } from "sonner";
 import {
   createAppointmentSlot,
   getAdminAppointmentSlots,
+  getAdminAppointments,
   getAdminSectorRegistrations,
   getSectorDocumentUrl,
   reviewSectorRegistration,
   updateAppointmentSlotActive,
+  updateAppointmentStatus,
 } from "@/services/admin-service";
 import { queryKeys } from "@/lib/query-keys";
 import { SectorStatusBadge } from "@/components/sector/sector-status-badge";
@@ -28,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AdminSectorRegistrationRecord, AppointmentSlot, SectorType } from "@/types/sector";
+import type { AdminAppointmentRecord, AdminSectorRegistrationRecord, AppointmentSlot, SectorType } from "@/types/sector";
 
 // ─────────────────────────────────────────────────────────────
 // Helper
@@ -49,7 +51,7 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 
 export function AdminSectorsPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"registrations" | "slots">("registrations");
+  const [tab, setTab] = useState<"registrations" | "appointments" | "slots">("registrations");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sectorFilter, setSectorFilter] = useState("");
@@ -67,6 +69,11 @@ export function AdminSectorsPage() {
   const slotsQuery = useQuery({
     queryKey: queryKeys.admin.appointmentSlots(),
     queryFn: getAdminAppointmentSlots,
+  });
+
+  const appointmentsQuery = useQuery({
+    queryKey: queryKeys.admin.appointments(),
+    queryFn: () => getAdminAppointments(),
   });
 
   const registrations = (regQuery.data ?? []).filter((r) => {
@@ -97,7 +104,7 @@ export function AdminSectorsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--portal-outline)]">
-        {(["registrations", "slots"] as const).map((t) => (
+        {(["registrations", "appointments", "slots"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -108,7 +115,7 @@ export function AdminSectorsPage() {
                 : "text-[var(--portal-muted)] hover:text-[var(--portal-ink)]",
             ].join(" ")}
           >
-            {t === "registrations" ? "Registrations" : "Appointment Slots"}
+            {t === "registrations" ? "Registrations" : t === "appointments" ? "Appointments" : "Appointment Slots"}
           </button>
         ))}
       </div>
@@ -206,6 +213,14 @@ export function AdminSectorsPage() {
         </>
       )}
 
+      {tab === "appointments" && (
+        <AppointmentManager
+          appointments={appointmentsQuery.data ?? []}
+          isLoading={appointmentsQuery.isLoading}
+          qc={qc}
+        />
+      )}
+
       {tab === "slots" && (
         <SlotManager slots={slotsQuery.data ?? []} isLoading={slotsQuery.isLoading} qc={qc} />
       )}
@@ -231,6 +246,180 @@ export function AdminSectorsPage() {
             void qc.invalidateQueries({ queryKey: queryKeys.admin.appointmentSlots() });
           }}
         />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Appointment manager
+// ─────────────────────────────────────────────────────────────
+
+const APPT_STATUS_COLORS: Record<string, string> = {
+  booked: "bg-blue-100 text-blue-700",
+  confirmed: "bg-green-100 text-green-700",
+  completed: "bg-slate-100 text-slate-600",
+  cancelled: "bg-red-100 text-red-600",
+  no_show: "bg-orange-100 text-orange-700",
+};
+
+function AppointmentManager({
+  appointments,
+  isLoading,
+  qc,
+}: {
+  appointments: AdminAppointmentRecord[];
+  isLoading: boolean;
+  qc: ReturnType<typeof useQueryClient>;
+}) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const filtered = appointments.filter((a) => {
+    if (statusFilter && a.status !== statusFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        a.residentName.toLowerCase().includes(q) ||
+        a.residentCode.toLowerCase().includes(q) ||
+        a.slotLabel.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  async function handleStatusChange(
+    appt: AdminAppointmentRecord,
+    status: "confirmed" | "completed" | "cancelled" | "no_show",
+  ) {
+    setUpdating(appt.id);
+    try {
+      await updateAppointmentStatus(appt.id, status);
+      void qc.invalidateQueries({ queryKey: queryKeys.admin.appointments() });
+      toast.success(`Appointment marked as ${status}.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to update appointment.");
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-10 text-sm text-[var(--portal-muted)]">
+        <LoaderCircle className="h-5 w-5 animate-spin" /> Loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--portal-muted)]" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, code, or slot..."
+            className="pl-9"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)]"
+        >
+          <option value="">All statuses</option>
+          <option value="booked">Booked</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="no_show">No show</option>
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="py-16 text-center text-sm text-[var(--portal-muted)]">No appointments found.</div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-[var(--portal-outline)]">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-[var(--portal-surface-soft)]">
+                <TableHead>Resident</TableHead>
+                <TableHead>Sector</TableHead>
+                <TableHead>Appointment slot</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((appt) => (
+                <TableRow key={appt.id}>
+                  <TableCell>
+                    <p className="font-medium text-[var(--portal-ink)]">{appt.residentName}</p>
+                    <p className="text-xs text-[var(--portal-muted)]">{appt.residentCode} · {appt.barangay}</p>
+                  </TableCell>
+                  <TableCell className="text-sm">{appt.sectorTypeLabel}</TableCell>
+                  <TableCell className="text-sm text-[var(--portal-muted)]">{appt.slotLabel}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${APPT_STATUS_COLORS[appt.status] ?? "bg-slate-100 text-slate-600"}`}>
+                      {appt.statusLabel}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {updating === appt.id ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin text-[var(--portal-muted)]" />
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {appt.status === "booked" && (
+                          <Button
+                            size="sm"
+                            onClick={() => void handleStatusChange(appt, "confirmed")}
+                            className="h-7 bg-green-600 px-2 text-xs text-white hover:bg-green-700"
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> Confirm
+                          </Button>
+                        )}
+                        {(appt.status === "booked" || appt.status === "confirmed") && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void handleStatusChange(appt, "completed")}
+                              className="h-7 border-[var(--portal-outline)] px-2 text-xs"
+                            >
+                              Complete
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void handleStatusChange(appt, "no_show")}
+                              className="h-7 border-orange-200 px-2 text-xs text-orange-600 hover:bg-orange-50"
+                            >
+                              No show
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void handleStatusChange(appt, "cancelled")}
+                              className="h-7 border-red-200 px-2 text-xs text-red-600 hover:bg-red-50"
+                            >
+                              <XCircle className="h-3 w-3" /> Cancel
+                            </Button>
+                          </>
+                        )}
+                        {(appt.status === "completed" || appt.status === "cancelled" || appt.status === "no_show") && (
+                          <span className="text-xs text-[var(--portal-muted)]">—</span>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
@@ -509,7 +698,13 @@ function AddSlotModal({ onClose, onDone }: { onClose: () => void; onDone: () => 
       toast.success("Appointment slot created.");
       onDone();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Unable to create slot.");
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Unable to create slot.";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
