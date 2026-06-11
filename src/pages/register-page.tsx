@@ -21,7 +21,8 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AuthShell } from "@/features/auth/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
-import { signUp, uploadRegistrationGovernmentIds } from "@/services/auth-service";
+import { getErrorMessage } from "@/lib/error";
+import { signOut, signUp, uploadRegistrationGovernmentIds } from "@/services/auth-service";
 import {
   getPandanAddressData,
   type PandanBarangay,
@@ -150,6 +151,7 @@ export function RegisterPage() {
 
   async function onSubmit(values: RegisterFormValues) {
     setSubmitError(null);
+    let didCreateAccount = false;
 
     try {
       const redirectTo = `${window.location.origin}/reset-password`;
@@ -175,6 +177,7 @@ export function RegisterPage() {
         governmentIdType: values.governmentIdType,
         governmentIdNumber: values.governmentIdNumber,
       });
+      didCreateAccount = true;
 
       const userId = signUpData.user?.id;
 
@@ -182,13 +185,23 @@ export function RegisterPage() {
         throw new Error("Account was created, but the uploaded government ID could not be linked.");
       }
 
+      if (!signUpData.session) {
+        throw new Error(
+          "Account was created, but ID upload requires an active signup session. Disable Supabase email confirmation for resident registration or add a server-side upload flow.",
+        );
+      }
+
       await uploadRegistrationGovernmentIds(userId, values.governmentIdFiles);
+      await signOut();
 
       toast.success("Registration submitted. Your account is pending admin approval before you can sign in.");
       navigate("/login", { replace: true });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to create your account right now.";
+      if (didCreateAccount) {
+        await signOut().catch(() => undefined);
+      }
+
+      const message = getErrorMessage(error, "Unable to create your account right now.");
       setSubmitError(message);
       toast.error(message);
     }

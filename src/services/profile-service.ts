@@ -27,7 +27,10 @@ function mapUserToProfile(user: User): UserProfile {
     role: typeof metadata.role === "string" ? (metadata.role as UserProfile["role"]) : null,
     barangay: typeof metadata.barangay === "string" ? metadata.barangay : null,
     municipality: typeof metadata.municipality === "string" ? metadata.municipality : null,
-    is_active: metadata.is_active !== false,
+    is_active:
+      metadata.role === "resident"
+        ? metadata.is_active === true
+        : metadata.is_active !== false,
   };
 }
 

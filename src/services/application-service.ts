@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
+import { PENDING_RESIDENT_APPROVAL_MESSAGE } from "@/services/auth-service";
 import { uploadFile } from "@/services/storage-service";
 import type {
   AssistanceRequestFormValues,
@@ -50,6 +51,24 @@ async function requireAuthenticatedUser() {
     throw new Error("Sign in with a resident account before submitting a request.");
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, is_active")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (profile?.role !== "resident") {
+    throw new Error("Sign in with a resident account before submitting a request.");
+  }
+
+  if (profile.is_active === false) {
+    throw new Error(PENDING_RESIDENT_APPROVAL_MESSAGE);
+  }
+
   return data.user;
 }
 
@@ -64,7 +83,6 @@ async function ensureResidentRecord(userId: string, values: AssistanceRequestFor
     barangay: values.barangay,
     municipality: values.municipality,
     role: "resident",
-    is_active: true,
   });
 
   if (profileError) {

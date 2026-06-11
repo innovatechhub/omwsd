@@ -5,6 +5,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { isSupabaseConfigured } from "@/lib/env";
+import { PENDING_RESIDENT_APPROVAL_MESSAGE } from "@/services/auth-service";
 import type { AppRole } from "@/types/auth";
 
 const adminRoles: AppRole[] = ["admin", "super_admin", "social_worker"];
@@ -56,7 +57,7 @@ function RoleGate({
   children,
 }: PropsWithChildren<{ allowedRoles: AppRole[] }>) {
   const location = useLocation();
-  const { user, role, isLoading } = useAuth();
+  const { user, profile, role, isLoading } = useAuth();
 
   if (!isSupabaseConfigured) {
     return (
@@ -84,6 +85,16 @@ function RoleGate({
     return <Navigate to={`/login?redirect=${encodeURIComponent(redirect)}`} replace />;
   }
 
+  if (role === "resident" && profile?.is_active === false) {
+    return (
+      <AuthStatusCard
+        icon={LockKeyhole}
+        title="Account pending approval"
+        description={PENDING_RESIDENT_APPROVAL_MESSAGE}
+      />
+    );
+  }
+
   if (!role || !allowedRoles.includes(role)) {
     return <Navigate to="/unauthorized" replace />;
   }
@@ -92,9 +103,9 @@ function RoleGate({
 }
 
 export function RedirectIfAuthenticated() {
-  const { user, role, isLoading } = useAuth();
+  const { user, profile, role, isLoading } = useAuth();
 
-  if (isLoading) {
+  if (isLoading && !user) {
     return (
       <AuthStatusCard
         icon={LockKeyhole}
@@ -104,7 +115,11 @@ export function RedirectIfAuthenticated() {
     );
   }
 
-  if (user) {
+  if (isLoading && user) {
+    return <Outlet />;
+  }
+
+  if (user && !(role === "resident" && profile?.is_active === false)) {
     return <Navigate to={getDefaultRouteForRole(role)} replace />;
   }
 

@@ -1,7 +1,11 @@
 import { PropsWithChildren, createContext, useContext, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getSession } from "@/services/auth-service";
+import {
+  PENDING_RESIDENT_APPROVAL_MESSAGE,
+  getSession,
+  signOut,
+} from "@/services/auth-service";
 import { getProfile } from "@/services/profile-service";
 import { queryKeys } from "@/lib/query-keys";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +90,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
     enabled: isSupabaseConfigured && !!session?.user,
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    const profile = profileQuery.data;
+
+    if (profile?.role !== "resident" || profile.is_active !== false) {
+      return;
+    }
+
+    setAuthError(PENDING_RESIDENT_APPROVAL_MESSAGE);
+    void signOut()
+      .then(() => {
+        setAuthError(PENDING_RESIDENT_APPROVAL_MESSAGE);
+      })
+      .catch((error) => {
+        setAuthError(error instanceof Error ? error.message : PENDING_RESIDENT_APPROVAL_MESSAGE);
+      });
+  }, [profileQuery.data]);
 
   const value: AuthContextValue = {
     session,

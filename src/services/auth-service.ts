@@ -5,6 +5,10 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { resolveMutation } from "@/services/mutation-service";
 import { resolveNullableQuery } from "@/services/query-service";
 import { uploadFile } from "@/services/storage-service";
+import { getProfile } from "@/services/profile-service";
+
+export const PENDING_RESIDENT_APPROVAL_MESSAGE =
+  "Your account is pending admin approval. Please wait for an administrator to activate your account.";
 
 export interface SignInCredentials {
   email: string;
@@ -51,9 +55,18 @@ export async function getSession() {
 export async function signInWithPassword(credentials: SignInCredentials) {
   assertSupabaseConfigured();
 
-  return resolveMutation<AuthTokenResponsePassword["data"]>(
+  const data = await resolveMutation<AuthTokenResponsePassword["data"]>(
     supabase.auth.signInWithPassword(credentials),
   );
+
+  const profile = await getProfile(data.user ?? null);
+
+  if (profile?.role === "resident" && profile.is_active === false) {
+    await supabase.auth.signOut();
+    throw new Error(PENDING_RESIDENT_APPROVAL_MESSAGE);
+  }
+
+  return data;
 }
 
 export async function signUp({

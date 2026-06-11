@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { AuthShell } from "@/features/auth/auth-shell";
 import { getDefaultRouteForAuthenticatedUser } from "@/features/auth/route-guards";
 import { useAuth } from "@/hooks/use-auth";
+import { getErrorMessage } from "@/lib/error";
 import { signInWithPassword } from "@/services/auth-service";
 import { getProfile } from "@/services/profile-service";
 import type { AppRole } from "@/types/auth";
@@ -54,7 +55,7 @@ function resolveRoleFromMetadata(value: unknown): AppRole | null {
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refreshSession, isConfigured } = useAuth();
+  const { refreshSession, isConfigured, error: authError } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
@@ -79,13 +80,6 @@ export function LoginPage() {
         profile?.role ??
         resolveRoleFromMetadata(response.user?.user_metadata?.role);
 
-      if (nextRole === "resident" && profile?.is_active === false) {
-        await import("@/services/auth-service").then((m) => m.signOut());
-        await refreshSession();
-        setSubmitError("Your account is pending admin approval. Please wait for an administrator to activate your account.");
-        return;
-      }
-
       const redirect = searchParams.get("redirect");
       const fallbackPath = getDefaultRouteForAuthenticatedUser(nextRole);
       const targetPath =
@@ -94,8 +88,7 @@ export function LoginPage() {
       toast.success("Signed in successfully.");
       navigate(targetPath, { replace: true });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to sign in with those credentials.";
+      const message = getErrorMessage(error, "Unable to sign in with those credentials.");
       setSubmitError(message);
       toast.error(message);
     }
@@ -154,9 +147,9 @@ export function LoginPage() {
           ) : null}
         </div>
 
-        {submitError ? (
+        {submitError || authError ? (
           <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {submitError}
+            {submitError ?? authError}
           </div>
         ) : null}
 
