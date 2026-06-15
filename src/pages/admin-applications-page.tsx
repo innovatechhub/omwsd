@@ -33,12 +33,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { RowActions } from "@/components/ui/row-actions";
-import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
+const applicationStatusTabs: Array<{
+  label: string;
+  status: AdminApplicationRecord["status"];
+}> = [
+  { label: "Pending", status: "Pending" },
+  { label: "Correction", status: "For correction" },
+  { label: "For interview", status: "For interview" },
+  { label: "Approved", status: "Approved" },
+];
+
 function getStatusBadgeVariant(status: AdminApplicationRecord["status"]) {
-  if (status === "Approved" || status === "Completed") {
+  if (status === "Approved") {
     return "secondary";
   }
 
@@ -72,10 +81,11 @@ export function AdminApplicationsPage() {
 
   const applications = applicationsQuery.data ?? [];
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeStatus, setActiveStatus] =
+    useState<AdminApplicationRecord["status"]>("Pending");
   const [activeReference, setActiveReference] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] =
-    useState<AdminApplicationRecord["status"]>("Pending verification");
+    useState<AdminApplicationRecord["status"]>("Pending");
   const [noteDraft, setNoteDraft] = useState("");
   const [correctionItems, setCorrectionItems] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -91,12 +101,11 @@ export function AdminApplicationsPage() {
         application.assistance.toLowerCase().includes(searchTerm.toLowerCase()) ||
         application.barangay.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || application.status.toLowerCase() === statusFilter;
+      const matchesStatus = application.status === activeStatus;
 
       return matchesSearch && matchesStatus;
     });
-  }, [applications, searchTerm, statusFilter]);
+  }, [activeStatus, applications, searchTerm]);
 
   const selectedApplication = useMemo(
     () =>
@@ -139,15 +148,24 @@ export function AdminApplicationsPage() {
     }
   }, [selectedApplication]);
 
+  useEffect(() => {
+    setSelectedRows(new Set());
+  }, [activeStatus, searchTerm]);
+
   const totalPending = applications.filter(
-    (application) => application.status === "Pending verification",
+    (application) => application.status === "Pending",
   ).length;
-  const totalReview = applications.filter(
-    (application) => application.status === "Under review",
+  const totalInterview = applications.filter(
+    (application) => application.status === "For interview",
   ).length;
   const totalCorrection = applications.filter(
     (application) => application.status === "For correction",
   ).length;
+  const totalApproved = applications.filter(
+    (application) => application.status === "Approved",
+  ).length;
+  const activeStatusLabel =
+    applicationStatusTabs.find((tab) => tab.status === activeStatus)?.label ?? activeStatus;
 
   async function handleStatusUpdate(
     application: AdminApplicationRecord,
@@ -227,7 +245,7 @@ export function AdminApplicationsPage() {
     try {
       setIsSaving(true);
       const toApprove = applications.filter(
-        (app) => selectedRows.has(app.reference) && app.status !== "Approved" && app.status !== "Completed",
+        (app) => selectedRows.has(app.reference) && app.status !== "Approved",
       );
 
       await Promise.all(
@@ -313,10 +331,10 @@ export function AdminApplicationsPage() {
   return (
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="All records" value={String(applications.length)} />
-        <SummaryCard label="Pending verification" value={String(totalPending)} />
-        <SummaryCard label="Under review" value={String(totalReview)} />
+        <SummaryCard label="Pending" value={String(totalPending)} />
         <SummaryCard label="For correction" value={String(totalCorrection)} />
+        <SummaryCard label="For interview" value={String(totalInterview)} />
+        <SummaryCard label="Approved" value={String(totalApproved)} />
       </section>
 
       <Card className="portal-card border-[var(--portal-outline)] shadow-none">
@@ -324,7 +342,7 @@ export function AdminApplicationsPage() {
           <CardTitle>Queue filters</CardTitle>
           <CardDescription>Search by reference, resident, service, or barangay.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-[1fr_220px]">
+        <CardContent>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -334,14 +352,6 @@ export function AdminApplicationsPage() {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">All statuses</option>
-            <option value="pending verification">Pending verification</option>
-            <option value="under review">Under review</option>
-            <option value="for correction">For correction</option>
-            <option value="approved">Approved</option>
-            <option value="completed">Completed</option>
-          </Select>
         </CardContent>
       </Card>
 
@@ -368,8 +378,41 @@ export function AdminApplicationsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-4" role="tablist" aria-label="Application status">
+            {applicationStatusTabs.map((tab) => {
+              const isActive = tab.status === activeStatus;
+              const count = applications.filter((application) => application.status === tab.status).length;
+
+              return (
+                <button
+                  key={tab.status}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveStatus(tab.status)}
+                  className={[
+                    "flex min-h-11 items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-left text-sm font-semibold transition-colors",
+                    isActive
+                      ? "border-primary/20 bg-primary text-primary-foreground"
+                      : "border-[var(--portal-outline)] bg-white text-[var(--portal-muted)] hover:bg-[var(--portal-surface-soft)] hover:text-[var(--portal-ink)]",
+                  ].join(" ")}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={[
+                      "rounded-full px-2 py-0.5 text-xs",
+                      isActive ? "bg-white/15 text-white" : "bg-[var(--portal-surface-soft)] text-[var(--portal-ink)]",
+                    ].join(" ")}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <p>{filteredApplications.length} record(s) shown</p>
+            <p>{filteredApplications.length} {activeStatusLabel.toLowerCase()} record(s) shown</p>
             <p>Tap or click a row to open review modal</p>
           </div>
 
@@ -497,8 +540,7 @@ export function AdminApplicationsPage() {
                                   icon: <CheckCircle2 className="h-4 w-4" />,
                                   disabled:
                                     isSaving ||
-                                    application.status === "Approved" ||
-                                    application.status === "Completed",
+                                    application.status === "Approved",
                                   onSelect: () =>
                                     void handleStatusUpdate(
                                       application,
@@ -518,7 +560,7 @@ export function AdminApplicationsPage() {
             </>
           ) : (
             <div className="rounded-xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-[var(--portal-muted)]">
-              No applications matched the current filters.
+              No {activeStatusLabel.toLowerCase()} applications matched the current search.
             </div>
           )}
         </CardContent>
@@ -532,7 +574,7 @@ export function AdminApplicationsPage() {
         size="xl"
         footer={
           (() => {
-            const isLocked = selectedApplication?.status === "Approved" || selectedApplication?.status === "Completed";
+            const isLocked = selectedApplication?.status === "Approved";
             return (
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
@@ -555,14 +597,13 @@ export function AdminApplicationsPage() {
         }
       >
         {selectedApplication ? (() => {
-          const isLocked = selectedApplication.status === "Approved" || selectedApplication.status === "Completed";
+          const isLocked = selectedApplication.status === "Approved";
 
           const workflowSteps: Array<{ label: string; key: AdminApplicationRecord["status"] }> = [
-            { label: "Pending", key: "Pending verification" },
-            { label: "Under review", key: "Under review" },
+            { label: "Pending", key: "Pending" },
             { label: "For correction", key: "For correction" },
+            { label: "For interview", key: "For interview" },
             { label: "Approved", key: "Approved" },
-            { label: "Completed", key: "Completed" },
           ];
 
           const currentStepIndex = workflowSteps.findIndex((s) => s.key === selectedApplication.status);
@@ -649,7 +690,7 @@ export function AdminApplicationsPage() {
                 <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   <div>
-                    <p className="font-semibold text-emerald-900">Case is {selectedApplication.status.toLowerCase()}</p>
+                    <p className="font-semibold text-emerald-900">Case is approved</p>
                     <p className="mt-0.5 text-emerald-700">
                       This application has been finalized. Status changes and remarks editing are disabled. You can still view all submitted documents and the full case history below.
                     </p>
@@ -664,14 +705,13 @@ export function AdminApplicationsPage() {
                     <p className="text-sm font-semibold">Update case status</p>
                     <p className="text-xs text-muted-foreground">Select a status then save</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {(
                       [
-                        { value: "Pending verification", color: "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100", active: "border-slate-500 bg-slate-100 ring-2 ring-slate-400 ring-offset-1" },
-                        { value: "Under review", color: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100", active: "border-blue-500 bg-blue-100 ring-2 ring-blue-400 ring-offset-1" },
+                        { value: "Pending", color: "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100", active: "border-slate-500 bg-slate-100 ring-2 ring-slate-400 ring-offset-1" },
                         { value: "For correction", color: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100", active: "border-amber-500 bg-amber-100 ring-2 ring-amber-400 ring-offset-1" },
+                        { value: "For interview", color: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100", active: "border-blue-500 bg-blue-100 ring-2 ring-blue-400 ring-offset-1" },
                         { value: "Approved", color: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100", active: "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-400 ring-offset-1" },
-                        { value: "Completed", color: "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100", active: "border-violet-500 bg-violet-100 ring-2 ring-violet-400 ring-offset-1" },
                       ] as const
                     ).map((opt) => (
                       <button
@@ -712,6 +752,14 @@ export function AdminApplicationsPage() {
                 </div>
               )}
 
+              {/* Resident's notes */}
+              {selectedApplication.requestReason && (
+                <div className="space-y-1.5 rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Resident's notes</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{selectedApplication.requestReason}</p>
+                </div>
+              )}
+
               {/* Reviewer remarks */}
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
@@ -736,7 +784,7 @@ export function AdminApplicationsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Requirements</p>
-                  {!isLocked && <p className="text-xs text-muted-foreground">Approve, flag, or reject each requirement</p>}
+                  {!isLocked && <p className="text-xs text-muted-foreground">Approve, flag, or reject configured requirements</p>}
                 </div>
                 {caseDetailsQuery.isLoading ? (
                   <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
@@ -768,7 +816,7 @@ export function AdminApplicationsPage() {
                               {req.documents.length} file{req.documents.length !== 1 ? "s" : ""} submitted
                             </p>
                           </div>
-                          {!isLocked && (
+                          {!isLocked && req.isActionable && (
                             <div className="flex shrink-0 flex-wrap gap-2">
                               <Button
                                 type="button"
@@ -803,6 +851,11 @@ export function AdminApplicationsPage() {
                             </div>
                           )}
                         </div>
+                        {!req.isActionable && (
+                          <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                            This is a document-only fallback because no requirement template is configured for this service. Add a requirement template before using requirement approval actions.
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>

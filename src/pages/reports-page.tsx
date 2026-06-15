@@ -111,7 +111,7 @@ export function ReportsPage() {
           { label: "Period volume", value: String(totals.totalApplications) },
           { label: "Avg per month", value: String(totals.averagePerMonth) },
           { label: "Peak month", value: String(totals.peak) },
-          { label: "Pending verification", value: String(metrics?.pendingVerification ?? 0) },
+          { label: "Pending", value: String(metrics?.pendingVerification ?? 0) },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border bg-card px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">

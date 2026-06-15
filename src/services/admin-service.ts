@@ -95,7 +95,7 @@ function mapCaseDocument(row: Record<string, unknown>) {
 function mapCaseRequirement(
   row: Record<string, unknown>,
   documents: AdminCaseDocumentRecord[],
-) {
+): AdminCaseRequirementRecord {
   const requirement = row.assistance_requirements as Record<string, unknown> | null;
   const requirementRecordId = String(row.id ?? "");
 
@@ -116,6 +116,7 @@ function mapCaseRequirement(
     reviewedAt: typeof row.reviewed_at === "string" ? row.reviewed_at : null,
     reviewedAtLabel: formatDate(typeof row.reviewed_at === "string" ? row.reviewed_at : null),
     documents: documents.filter((document) => document.applicationRequirementId === requirementRecordId),
+    isActionable: true,
   } satisfies AdminCaseRequirementRecord;
 }
 
@@ -176,14 +177,12 @@ function mapStatus(status: string | null): AdminApplicationRecord["status"] {
   switch (status) {
     case "for_correction":
       return "For correction";
-    case "under_review":
-      return "Under review";
+    case "for_interview":
+      return "For interview";
     case "approved":
       return "Approved";
-    case "completed":
-      return "Completed";
     default:
-      return "Pending verification";
+      return "Pending";
   }
 }
 
@@ -191,12 +190,10 @@ function toDbStatus(status: AdminApplicationRecord["status"]) {
   switch (status) {
     case "For correction":
       return "for_correction";
-    case "Under review":
-      return "under_review";
+    case "For interview":
+      return "for_interview";
     case "Approved":
       return "approved";
-    case "Completed":
-      return "completed";
     default:
       return "pending_verification";
   }
@@ -227,13 +224,77 @@ async function getCurrentUserId() {
   return user?.id ?? null;
 }
 
+async function writeAuditLog(
+  action: string,
+  entityType: string,
+  entityId: string | null,
+  metadata: Record<string, unknown> = {},
+) {
+  const actorId = await getCurrentUserId();
+  await supabase.from("audit_logs").insert({
+    actor_id: actorId,
+    action,
+    entity_type: entityType,
+    entity_id: entityId,
+    metadata,
+  });
+}
+
+export async function getAuditLogs(limit = 100) {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("id, actor_id, action, entity_type, entity_id, metadata, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+
+  const actorIds = [...new Set(rows.map((r) => r.actor_id).filter((id): id is string => typeof id === "string"))];
+  const actorMap = new Map<string, { name: string; email: string }>();
+
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", actorIds);
+
+    for (const p of (profiles ?? []) as Array<Record<string, unknown>>) {
+      actorMap.set(String(p.id ?? ""), {
+        name: String(p.full_name ?? p.email ?? "Staff"),
+        email: String(p.email ?? ""),
+      });
+    }
+  }
+
+  return rows.map((row) => {
+    const actor = actorMap.get(String(row.actor_id ?? ""));
+    return {
+      id: String(row.id ?? ""),
+      actorName: actor?.name ?? "System",
+      actorEmail: actor?.email ?? "",
+      action: String(row.action ?? ""),
+      entityType: String(row.entity_type ?? ""),
+      entityId: typeof row.entity_id === "string" ? row.entity_id : null,
+      metadata: (row.metadata as Record<string, unknown>) ?? {},
+      createdAt: typeof row.created_at === "string" ? row.created_at : "",
+      createdAtLabel: formatDate(typeof row.created_at === "string" ? row.created_at : null),
+    };
+  });
+}
+
 export async function getAdminApplications() {
   assertSupabaseConfigured();
 
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id, reference_number, applicant_full_name, applicant_barangay, urgency, submitted_at, admin_remarks, status, assistance_types(name)",
+      "id, reference_number, applicant_full_name, applicant_barangay, urgency, submitted_at, admin_remarks, request_reason, status, assistance_types(name)",
     )
     .order("submitted_at", { ascending: false });
 
@@ -254,6 +315,7 @@ export async function getAdminApplications() {
       priority: derivePriority(typeof item.urgency === "string" ? item.urgency : null),
       submittedAt: formatDate(typeof item.submitted_at === "string" ? item.submitted_at : null),
       submittedAtRaw: typeof item.submitted_at === "string" ? item.submitted_at : null,
+      requestReason: String(item.request_reason ?? ""),
       remarks: String(item.admin_remarks ?? ""),
     } satisfies AdminApplicationRecord;
   });
@@ -292,6 +354,8 @@ export async function updateAdminApplicationStatus(
   if (historyError) {
     throw historyError;
   }
+
+  void writeAuditLog("application.status_updated", "application", applicationId, { status: toDbStatus(status) });
 }
 
 export async function saveAdminApplicationRemarks(applicationId: string, remarks: string) {
@@ -307,6 +371,8 @@ export async function saveAdminApplicationRemarks(applicationId: string, remarks
   if (error) {
     throw error;
   }
+
+  void writeAuditLog("application.remarks_saved", "application", applicationId, {});
 }
 
 export async function getAdminApplicationCaseDetails(
@@ -383,6 +449,7 @@ export async function getAdminApplicationCaseDetails(
         reviewedAt: null,
         reviewedAtLabel: "Not recorded",
         documents,
+        isActionable: false,
       },
     ];
   }
@@ -458,7 +525,12 @@ export async function getAdminResidents() {
     }
   }
 
-  return ((profileRows ?? []) as Array<Record<string, unknown>>).map((profile) => {
+  return ((profileRows ?? []) as Array<Record<string, unknown>>)
+    .filter((profile) => {
+      const profileId = String(profile.id ?? "");
+      return residentByProfileId.has(profileId) || profile.is_active === false;
+    })
+    .map((profile) => {
     const profileId = String(profile.id ?? "");
     const resident = residentByProfileId.get(profileId);
     const barangay = resident?.barangays as Record<string, unknown> | null;
@@ -550,6 +622,8 @@ export async function verifyResident(residentId: string) {
   if (error) {
     throw error;
   }
+
+  void writeAuditLog("resident.verified", "resident", residentId, {});
 }
 
 export async function setResidentAccountState(profileId: string, isActive: boolean) {
@@ -565,6 +639,13 @@ export async function setResidentAccountState(profileId: string, isActive: boole
   if (error) {
     throw error;
   }
+
+  void writeAuditLog(
+    isActive ? "resident.account_activated" : "resident.account_suspended",
+    "profile",
+    profileId,
+    {},
+  );
 }
 
 export async function getAdminDashboardMetrics() {
@@ -573,7 +654,7 @@ export async function getAdminDashboardMetrics() {
   const metrics: AdminDashboardMetrics = {
     totalApplications: applications.length,
     pendingVerification: applications.filter(
-      (application) => application.status === "Pending verification",
+      (application) => application.status === "Pending",
     ).length,
     approved: applications.filter((application) => application.status === "Approved").length,
     forCorrection: applications.filter(
@@ -603,7 +684,7 @@ export async function getVerificationQueue() {
 
   return applications
     .filter((application) =>
-      ["Pending verification", "For correction", "Under review"].includes(application.status),
+      ["Pending", "For correction", "For interview"].includes(application.status),
     )
     .slice(0, 5)
     .map(
@@ -712,6 +793,8 @@ export async function saveAdminSetting(settingKey: string, settingValue: Record<
   if (error) {
     throw error;
   }
+
+  void writeAuditLog("settings.updated", "settings", null, { setting_key: settingKey });
 }
 
 export async function updateRequirementVerificationStatus(

@@ -23,6 +23,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 const adminRoles: AppRole[] = ["admin", "super_admin", "social_worker"];
+const administratorRoles: AppRole[] = ["admin", "super_admin"];
 
 function canRoleAccessRedirectPath(targetPath: string, role: AppRole | null) {
   if (targetPath.startsWith("/resident")) {
@@ -30,6 +31,14 @@ function canRoleAccessRedirectPath(targetPath: string, role: AppRole | null) {
   }
 
   if (targetPath.startsWith("/admin")) {
+    if (role === "social_worker") {
+      return targetPath !== "/admin" && !targetPath.startsWith("/admin/settings");
+    }
+
+    if (role && administratorRoles.includes(role)) {
+      return true;
+    }
+
     return Boolean(role && adminRoles.includes(role));
   }
 

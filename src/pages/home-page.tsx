@@ -18,7 +18,6 @@ import {
   publicAnnouncements,
 } from "@/features/public";
 
-import beachfront from "@/assets/pandan/beachfront.jpg";
 import municipalHall from "@/assets/pandan/municipal-hall.jpg";
 import pandanSign from "@/assets/pandan/pandan-sign.jpg";
 
@@ -34,11 +33,6 @@ const revealItem = {
 
 /* Hero slides */
 const heroSlides = [
-  {
-    image: beachfront,
-    headline: "Serving the People of Pandan",
-    sub: "Your gateway to public assistance, social welfare programs, and community support.",
-  },
   {
     image: municipalHall,
     headline: "Assistance Made Accessible",

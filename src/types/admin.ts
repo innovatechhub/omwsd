@@ -3,11 +3,12 @@ export interface AdminApplicationRecord {
   reference: string;
   resident: string;
   assistance: string;
-  status: "Pending verification" | "For correction" | "Under review" | "Approved" | "Completed";
+  status: "Pending" | "For correction" | "For interview" | "Approved";
   barangay: string;
   priority: "Normal" | "High" | "Urgent";
   submittedAt: string;
   submittedAtRaw: string | null;
+  requestReason: string;
   remarks: string;
 }
 
@@ -36,6 +37,7 @@ export interface AdminCaseRequirementRecord {
   reviewedAt: string | null;
   reviewedAtLabel: string | null;
   documents: AdminCaseDocumentRecord[];
+  isActionable: boolean;
 }
 
 export interface AdminApplicationCaseDetails {

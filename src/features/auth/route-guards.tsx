@@ -9,13 +9,18 @@ import { PENDING_RESIDENT_APPROVAL_MESSAGE } from "@/services/auth-service";
 import type { AppRole } from "@/types/auth";
 
 const adminRoles: AppRole[] = ["admin", "super_admin", "social_worker"];
+const administratorRoles: AppRole[] = ["admin", "super_admin"];
 
 function getDefaultRouteForRole(role: AppRole | null) {
   if (role === "resident") {
     return "/resident";
   }
 
-  if (role && adminRoles.includes(role)) {
+  if (role === "social_worker") {
+    return "/admin/applications";
+  }
+
+  if (role && administratorRoles.includes(role)) {
     return "/admin";
   }
 
@@ -145,6 +150,14 @@ export function RequireResident() {
 export function RequireAdmin() {
   return (
     <RoleGate allowedRoles={adminRoles}>
+      <Outlet />
+    </RoleGate>
+  );
+}
+
+export function RequireAdministrator() {
+  return (
+    <RoleGate allowedRoles={administratorRoles}>
       <Outlet />
     </RoleGate>
   );

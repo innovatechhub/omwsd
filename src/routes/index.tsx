@@ -4,7 +4,8 @@ import { AdminLayout } from "@/components/layout/admin-layout";
 import { MainLayout } from "@/components/layout/main-layout";
 import { PublicLayout } from "@/components/layout/public-layout";
 import { ResidentLayout } from "@/components/layout/resident-layout";
-import { RedirectIfAuthenticated, RequireAdmin, RequireResident } from "@/features/auth";
+import { RedirectIfAuthenticated, RequireAdmin, RequireAdministrator, RequireResident } from "@/features/auth";
+import { useAuth } from "@/hooks/use-auth";
 import { AdminApplicationsPage } from "@/pages/admin-applications-page";
 import { AdminDashboardPage } from "@/pages/admin-dashboard-page";
 import { AdminResidentsPage } from "@/pages/admin-residents-page";
@@ -31,6 +32,16 @@ import { ServiceDetailsPage } from "@/pages/service-details-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { ServicesPage } from "@/pages/services-page";
 import { UnauthorizedPage } from "@/pages/unauthorized-page";
+
+function AdminHomePage() {
+  const { role } = useAuth();
+
+  if (role === "social_worker") {
+    return <Navigate to="/admin/applications" replace />;
+  }
+
+  return <AdminDashboardPage />;
+}
 
 const router = createBrowserRouter([
   {
@@ -73,7 +84,7 @@ const router = createBrowserRouter([
           {
             element: <AdminLayout />,
             children: [
-              { index: true, element: <AdminDashboardPage /> },
+              { index: true, element: <AdminHomePage /> },
               {
                 path: "applications",
                 element: <AdminApplicationsPage />,
@@ -92,7 +103,13 @@ const router = createBrowserRouter([
               },
               {
                 path: "settings",
-                element: <SettingsPage />,
+                element: <RequireAdministrator />,
+                children: [
+                  {
+                    index: true,
+                    element: <SettingsPage />,
+                  },
+                ],
               },
             ],
           },

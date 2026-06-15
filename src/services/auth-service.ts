@@ -41,6 +41,20 @@ function assertSupabaseConfigured() {
   }
 }
 
+async function writeAuthAuditLog(
+  action: string,
+  actorId: string | null,
+  metadata: Record<string, unknown> = {},
+) {
+  await supabase.from("audit_logs").insert({
+    actor_id: actorId,
+    action,
+    entity_type: "auth",
+    entity_id: actorId,
+    metadata,
+  });
+}
+
 export async function getSession() {
   if (!isSupabaseConfigured) {
     return null;
@@ -65,6 +79,8 @@ export async function signInWithPassword(credentials: SignInCredentials) {
     await supabase.auth.signOut();
     throw new Error(PENDING_RESIDENT_APPROVAL_MESSAGE);
   }
+
+  void writeAuthAuditLog("auth.sign_in", data.user?.id ?? null, { role: profile?.role ?? "unknown" });
 
   return data;
 }
@@ -172,6 +188,9 @@ export async function signOut() {
   if (!isSupabaseConfigured) {
     return;
   }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void writeAuthAuditLog("auth.sign_out", user?.id ?? null, {});
 
   await resolveMutation(
     supabase.auth.signOut().then(({ error }) => ({

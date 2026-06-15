@@ -141,7 +141,7 @@ export function AdminDashboardPage() {
     () =>
       scopedApplications
         .filter((application) =>
-          ["Pending verification", "For correction", "Under review"].includes(application.status),
+          ["Pending", "For correction", "For interview"].includes(application.status),
         )
         .slice(0, 5)
         .map(
@@ -160,7 +160,7 @@ export function AdminDashboardPage() {
 
   const totalApplications = scopedApplications.length;
   const pendingVerification = scopedApplications.filter(
-    (application) => application.status === "Pending verification",
+    (application) => application.status === "Pending",
   ).length;
   const approved = scopedApplications.filter(
     (application) => application.status === "Approved",
@@ -172,7 +172,7 @@ export function AdminDashboardPage() {
   const urgentCount = queue.filter((i) => i.priority === "Urgent").length;
   const highCount = queue.filter((i) => i.priority === "High").length;
   const normalCount = queue.filter((i) => i.priority === "Normal").length;
-  const activeCount = queue.filter((i) => i.status !== "Completed").length;
+  const activeCount = queue.filter((i) => i.status !== "Approved").length;
 
   const completionRate =
     totalApplications > 0 ? Math.round((approved / totalApplications) * 100) : 0;
@@ -299,7 +299,7 @@ export function AdminDashboardPage() {
           icon={<ClipboardCheck className="h-4 w-4" />}
         />
         <KpiCard
-          label="Pending verification"
+          label="Pending"
           value={fmt(pendingVerification)}
           sub={`${reviewPressure}% of total`}
           icon={<TimerReset className="h-4 w-4" />}

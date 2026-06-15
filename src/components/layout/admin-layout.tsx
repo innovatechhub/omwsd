@@ -16,19 +16,35 @@ import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/services/auth-service";
+import type { AppRole } from "@/types/auth";
 
-const adminNav = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/applications", label: "Applications", icon: FileText },
-  { to: "/admin/residents", label: "Residents", icon: Users },
-  { to: "/admin/sectors", label: "Appointments", icon: UserCheck },
-  { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
+type AdminNavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles: AppRole[];
+};
+
+const operationalRoles: AppRole[] = ["admin", "super_admin", "social_worker"];
+const administratorRoles: AppRole[] = ["admin", "super_admin"];
+
+const adminNav: AdminNavItem[] = [
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: administratorRoles },
+  { to: "/admin/applications", label: "Applications", icon: FileText, roles: operationalRoles },
+  { to: "/admin/residents", label: "Residents", icon: Users, roles: operationalRoles },
+  { to: "/admin/sectors", label: "Appointments", icon: UserCheck, roles: operationalRoles },
+  { to: "/admin/reports", label: "Reports", icon: BarChart3, roles: operationalRoles },
+  { to: "/admin/settings", label: "Settings", icon: Settings, roles: administratorRoles },
 ];
 
 export function AdminLayout() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, role } = useAuth();
+  const isStaff = role === "social_worker";
+  const portalTitle = isStaff ? "Staff Portal" : "Admin Portal";
+  const accessLabel = isStaff ? "Staff Access" : "Admin Access";
+  const fallbackAccountLabel = isStaff ? "Staff account" : "Admin account";
+  const visibleNav = role ? adminNav.filter((item) => item.roles.includes(role)) : [];
 
   async function handleSignOut() {
     try {
@@ -52,16 +68,16 @@ export function AdminLayout() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">
                     OMSWD Pandan
                   </p>
-                  <p className="text-xl font-semibold text-[var(--portal-ink)]">Admin Portal</p>
+                  <p className="text-xl font-semibold text-[var(--portal-ink)]">{portalTitle}</p>
                 </div>
               </div>
               <div className="portal-soft-card p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--portal-muted)]">
-                  Admin Access
+                  {accessLabel}
                 </p>
                 <p className="mt-1 flex items-center gap-2 text-sm font-medium text-[var(--portal-ink)]">
                   <ShieldCheck className="h-4 w-4 text-[var(--portal-accent)]" />
-                  {profile?.full_name ?? user?.email ?? "Admin account"}
+                  {profile?.full_name ?? user?.email ?? fallbackAccountLabel}
                 </p>
                 {user?.email && profile?.full_name && (
                   <p className="mt-0.5 truncate text-xs text-[var(--portal-muted)]">{user.email}</p>
@@ -70,7 +86,7 @@ export function AdminLayout() {
             </div>
 
             <nav className="grid gap-1.5">
-              {adminNav.map(({ to, label, icon: Icon }) => (
+              {visibleNav.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}
