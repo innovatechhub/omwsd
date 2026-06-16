@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { FileViewerModal } from "@/components/ui/file-viewer-modal";
 import { RowActions } from "@/components/ui/row-actions";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -75,6 +76,7 @@ export function AdminResidentsPage() {
   const [followUpMessage, setFollowUpMessage] = useState("");
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [viewingIdFileId, setViewingIdFileId] = useState<string | null>(null);
+  const [fileViewerUrl, setFileViewerUrl] = useState<string | null>(null);
 
   const idFilesQuery = useQuery({
     queryKey: ["admin", "residents", "id-files", selectedResident?.profileId ?? null],
@@ -164,18 +166,11 @@ export function AdminResidentsPage() {
   }
 
   async function handleViewIdFile(filePath: string, fileId: string) {
-    const viewer = window.open("about:blank", "_blank");
-    if (viewer) viewer.opener = null;
     try {
       setViewingIdFileId(fileId);
       const url = await createSignedFileUrl("ids", filePath);
-      if (viewer && !viewer.closed) {
-        viewer.location.replace(url);
-      } else {
-        window.location.assign(url);
-      }
+      setFileViewerUrl(url);
     } catch {
-      if (viewer && !viewer.closed) viewer.close();
       toast.error("Unable to open this file.");
     } finally {
       setViewingIdFileId((current) => (current === fileId ? null : current));
@@ -282,6 +277,7 @@ export function AdminResidentsPage() {
                       <TableHead>Account</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Requests</TableHead>
+                      <TableHead>Registered</TableHead>
                       <TableHead className="w-[70px] text-right">Actions</TableHead>
                     </tr>
                   </TableHeader>
@@ -308,6 +304,9 @@ export function AdminResidentsPage() {
                         <TableCell>{resident.contact}</TableCell>
                         <TableCell className="font-medium text-primary">
                           {resident.referenceCount}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {resident.registeredAt}
                         </TableCell>
                         <TableCell className="text-right">
                           <RowActions
@@ -563,6 +562,13 @@ export function AdminResidentsPage() {
           </div>
         ) : null}
       </Modal>
+
+      <FileViewerModal
+        open={fileViewerUrl !== null}
+        url={fileViewerUrl}
+        title="Government ID"
+        onClose={() => setFileViewerUrl(null)}
+      />
     </div>
   );
 }

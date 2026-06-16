@@ -8,6 +8,7 @@ import { DocumentDropzone } from "@/components/forms/document-dropzone";
 import { ResidentPageHeader } from "@/components/resident/resident-page-header";
 import { ResidentStateCard } from "@/components/resident/resident-state-card";
 import { ResidentTableSkeleton } from "@/components/resident/resident-table-skeleton";
+import { FileViewerModal } from "@/components/ui/file-viewer-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,8 @@ export function ResidentUploadsPage() {
   const [selectedRequirementId, setSelectedRequirementId] = useState(preselectedRequirementId);
   const [isUploading, setIsUploading] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+  const [fileViewerUrl, setFileViewerUrl] = useState<string | null>(null);
+  const [fileViewerTitle, setFileViewerTitle] = useState<string>("Document");
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const portalQuery = useResidentPortal();
@@ -74,25 +77,12 @@ export function ResidentUploadsPage() {
   }
 
   async function handleViewDocument(document: ResidentUploadedDocument) {
-    const viewer = window.open("about:blank", "_blank");
-    if (viewer) {
-      viewer.opener = null;
-    }
-
     try {
       setViewingDocumentId(document.id);
       const signedUrl = await createSignedFileUrl(document.bucket, document.filePath);
-
-      if (viewer && !viewer.closed) {
-        viewer.location.replace(signedUrl);
-        return;
-      }
-
-      window.location.assign(signedUrl);
+      setFileViewerTitle(document.fileName ?? "Document");
+      setFileViewerUrl(signedUrl);
     } catch (error) {
-      if (viewer && !viewer.closed) {
-        viewer.close();
-      }
       toast.error(error instanceof Error ? error.message : "Unable to open this file.");
     } finally {
       setViewingDocumentId((current) => (current === document.id ? null : current));
@@ -271,6 +261,13 @@ export function ResidentUploadsPage() {
           )}
         </CardContent>
       </Card>
+
+      <FileViewerModal
+        open={fileViewerUrl !== null}
+        url={fileViewerUrl}
+        title={fileViewerTitle}
+        onClose={() => setFileViewerUrl(null)}
+      />
     </div>
   );
 }

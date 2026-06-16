@@ -68,6 +68,7 @@ export interface SaveAdminProgramInput {
 export interface AdminCaseDocumentRecord {
   id: string;
   applicationRequirementId: string | null;
+  requirementName: string;
   bucket: string;
   filePath: string;
   fileName: string;

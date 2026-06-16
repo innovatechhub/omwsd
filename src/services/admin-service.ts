@@ -94,11 +94,12 @@ function formatCaseStatusLabel(status: string | null | undefined) {
   }
 }
 
-function mapCaseDocument(row: Record<string, unknown>) {
+function mapCaseDocument(row: Record<string, unknown>, requirementName = "General") {
   return {
     id: String(row.id ?? ""),
     applicationRequirementId:
       typeof row.application_requirement_id === "string" ? row.application_requirement_id : null,
+    requirementName,
     bucket: String(row.bucket ?? ""),
     filePath: String(row.file_path ?? ""),
     fileName: String(row.file_name ?? "Uploaded file"),
@@ -503,7 +504,17 @@ export async function getAdminApplicationCaseDetails(
     requirementRows = (refreshedRequirementRows ?? []) as Array<Record<string, unknown>>;
   }
 
-  const documents = ((documentRows ?? []) as Array<Record<string, unknown>>).map(mapCaseDocument);
+  const requirementNameById = new Map<string, string>();
+  for (const row of requirementRows) {
+    const req = row.assistance_requirements as Record<string, unknown> | null;
+    requirementNameById.set(String(row.id ?? ""), String(req?.name ?? "Requirement"));
+  }
+
+  const documents = ((documentRows ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const reqId = typeof row.application_requirement_id === "string" ? row.application_requirement_id : null;
+    const requirementName = reqId ? (requirementNameById.get(reqId) ?? "General") : "General";
+    return mapCaseDocument(row, requirementName);
+  });
   let requirements = requirementRows
     .map((row) => mapCaseRequirement(row, documents))
     .sort((left, right) => {

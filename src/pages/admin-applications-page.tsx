@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { FileViewerModal } from "@/components/ui/file-viewer-modal";
 import { RowActions } from "@/components/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,6 +93,8 @@ export function AdminApplicationsPage() {
   const [correctionItems, setCorrectionItems] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+  const [fileViewerUrl, setFileViewerUrl] = useState<string | null>(null);
+  const [fileViewerTitle, setFileViewerTitle] = useState<string>("File viewer");
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
@@ -292,40 +295,18 @@ export function AdminApplicationsPage() {
   }
 
   async function handleViewDocument(document: AdminCaseDocumentRecord) {
-    const viewer = window.open("about:blank", "_blank");
-    if (viewer) {
-      viewer.opener = null;
-    }
-
     try {
       setViewingDocumentId(document.id);
       const signedUrl = await createSignedFileUrl(document.bucket, document.filePath);
-
-      if (viewer && !viewer.closed) {
-        viewer.location.replace(signedUrl);
-        return;
-      }
-
-      window.location.assign(signedUrl);
+      setFileViewerTitle(document.fileName ?? "Document");
+      setFileViewerUrl(signedUrl);
     } catch (error) {
-      if (viewer && !viewer.closed) {
-        viewer.close();
-      }
       toast.error(error instanceof Error ? error.message : "Unable to open this file.");
     } finally {
       setViewingDocumentId((current) => (current === document.id ? null : current));
     }
   }
 
-  const requirementNameByRecordId = useMemo(() => {
-    const map = new Map<string, string>();
-
-    for (const requirement of caseDetailsQuery.data?.requirements ?? []) {
-      map.set(requirement.id, requirement.name);
-    }
-
-    return map;
-  }, [caseDetailsQuery.data?.requirements]);
 
   const allSelected =
     filteredApplications.length > 0 && selectedRows.size === filteredApplications.length;
@@ -902,9 +883,7 @@ export function AdminApplicationsPage() {
                           <TableRow key={doc.id}>
                             <TableCell className="max-w-[160px] truncate font-medium">{doc.fileName}</TableCell>
                             <TableCell className="hidden text-muted-foreground sm:table-cell">
-                              {doc.applicationRequirementId
-                                ? (requirementNameByRecordId.get(doc.applicationRequirementId) ?? "Linked")
-                                : "General"}
+                              {doc.requirementName}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">{doc.statusLabel}</Badge>
@@ -984,6 +963,13 @@ export function AdminApplicationsPage() {
           );
         })() : null}
       </Modal>
+
+      <FileViewerModal
+        open={fileViewerUrl !== null}
+        url={fileViewerUrl}
+        title={fileViewerTitle}
+        onClose={() => setFileViewerUrl(null)}
+      />
     </div>
   );
 }
