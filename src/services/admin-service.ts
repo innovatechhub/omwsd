@@ -48,6 +48,21 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "Not recorded";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(value));
+}
+
 function formatTokenLabel(value: string | null | undefined) {
   if (!value) {
     return "Not specified";
@@ -309,7 +324,7 @@ export async function getAuditLogs(limit = 100) {
       entityId: typeof row.entity_id === "string" ? row.entity_id : null,
       metadata: (row.metadata as Record<string, unknown>) ?? {},
       createdAt: typeof row.created_at === "string" ? row.created_at : "",
-      createdAtLabel: formatDate(typeof row.created_at === "string" ? row.created_at : null),
+      createdAtLabel: formatDateTime(typeof row.created_at === "string" ? row.created_at : null),
     };
   });
 }
