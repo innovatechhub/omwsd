@@ -11,6 +11,7 @@ import {
   FileText,
   LoaderCircle,
   Lock,
+  Printer,
   Search,
   XCircle,
   RotateCcw,
@@ -26,6 +27,7 @@ import {
   updateRequirementVerificationStatus,
 } from "@/services/admin-service";
 import { createSignedFileUrl } from "@/services/storage-service";
+import { printIntakeSheet } from "@/lib/print-intake-sheet";
 import type { AdminApplicationRecord, AdminCaseDocumentRecord, AdminCaseRequirementRecord } from "@/types/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -581,6 +583,16 @@ export function AdminApplicationsPage() {
                   {isLocked ? "This case is closed and cannot be edited." : "Changes are saved to the application record."}
                 </p>
                 <div className="flex gap-2">
+                  {selectedApplication && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => printIntakeSheet(selectedApplication)}
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print Intake Sheet
+                    </Button>
+                  )}
                   <Button type="button" variant="outline" onClick={closeCaseModal}>
                     {isLocked ? "Close" : "Cancel"}
                   </Button>

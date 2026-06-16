@@ -1,0 +1,7 @@
+project_id = "xwgmiulvmskgamitaqnn"
+
+[functions.create-staff-user]
+verify_jwt = true
+
+[functions.update-staff-user]
+verify_jwt = true

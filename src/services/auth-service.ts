@@ -1,7 +1,7 @@
 import type { AuthResponse, AuthTokenResponsePassword, Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
-import { isSupabaseConfigured } from "@/lib/env";
+import { env, isSupabaseConfigured } from "@/lib/env";
 import { resolveMutation } from "@/services/mutation-service";
 import { resolveNullableQuery } from "@/services/query-service";
 import { uploadFile } from "@/services/storage-service";
@@ -33,6 +33,11 @@ export interface SignUpPayload extends SignInCredentials {
   governmentIdNumber?: string;
 }
 
+export interface CreateStaffUserPayload extends SignInCredentials {
+  fullName: string;
+  role: "admin" | "social_worker";
+}
+
 function assertSupabaseConfigured() {
   if (!isSupabaseConfigured) {
     throw new Error(
@@ -53,6 +58,51 @@ async function writeAuthAuditLog(
     entity_id: actorId,
     metadata,
   });
+}
+
+function getSupabaseProjectRef() {
+  try {
+    return new URL(env.supabaseUrl).hostname.split(".")[0] || "<project-ref>";
+  } catch {
+    return "<project-ref>";
+  }
+}
+
+async function throwEdgeFunctionError(error: unknown, functionName: string): Promise<never> {
+  const context = (error as { context?: unknown }).context;
+
+  if (context instanceof Response) {
+    const payload = await context
+      .clone()
+      .json()
+      .catch(() => null);
+
+    if (payload && typeof payload.error === "string") {
+      throw new Error(payload.error);
+    }
+
+    if (
+      context.status === 404 &&
+      payload &&
+      typeof payload === "object" &&
+      "code" in payload &&
+      payload.code === "NOT_FOUND"
+    ) {
+      throw new Error(
+        `Supabase Edge Function "${functionName}" is not deployed to project ${getSupabaseProjectRef()}. Run: npx supabase functions deploy ${functionName} --project-ref ${getSupabaseProjectRef()}`,
+      );
+    }
+  }
+
+  const message = error instanceof Error ? error.message : "Unable to call Supabase Edge Function.";
+
+  if (message === "Failed to send a request to the Edge Function") {
+    throw new Error(
+      `Unable to reach Supabase Edge Function "${functionName}" in project ${getSupabaseProjectRef()}. Confirm it is deployed and the app is using the correct VITE_SUPABASE_URL.`,
+    );
+  }
+
+  throw new Error(message);
 }
 
 export async function getSession() {
@@ -133,6 +183,55 @@ export async function signUp({
       },
     }),
   );
+}
+
+export async function createStaffUser({
+  email,
+  password,
+  fullName,
+  role,
+}: CreateStaffUserPayload) {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase.functions.invoke<{ userId: string }>(
+    "create-staff-user",
+    {
+      body: {
+        email,
+        password,
+        fullName,
+        role,
+      },
+    },
+  );
+
+  if (error) {
+    await throwEdgeFunctionError(error, "create-staff-user");
+  }
+
+  return data;
+}
+
+export interface UpdateStaffUserPayload {
+  userId: string;
+  fullName?: string;
+  role?: string;
+  password?: string;
+}
+
+export async function updateStaffUser(payload: UpdateStaffUserPayload) {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase.functions.invoke<{ success: boolean }>(
+    "update-staff-user",
+    { body: payload },
+  );
+
+  if (error) {
+    await throwEdgeFunctionError(error, "update-staff-user");
+  }
+
+  return data;
 }
 
 function sanitizeFileName(name: string) {

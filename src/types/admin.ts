@@ -1,3 +1,5 @@
+import type { FamilyCompositionMember } from "@/types/application";
+
 export interface AdminApplicationRecord {
   id: string;
   reference: string;
@@ -5,11 +7,61 @@ export interface AdminApplicationRecord {
   assistance: string;
   status: "Pending" | "For correction" | "For interview" | "Approved";
   barangay: string;
+  municipality: string;
   priority: "Normal" | "High" | "Urgent";
   submittedAt: string;
   submittedAtRaw: string | null;
   requestReason: string;
   remarks: string;
+  birthDate: string | null;
+  sex: string | null;
+  civilStatus: string | null;
+  contactNumber: string;
+  addressLine: string;
+  householdSize: number | null;
+  monthlyIncome: number | null;
+  educationalAttainment: string | null;
+  occupation: string | null;
+  relationshipToBeneficiary: string | null;
+  familyComposition: FamilyCompositionMember[];
+}
+
+export interface AdminProgramRequirementRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  documentType: string | null;
+  isRequired: boolean;
+  sortOrder: number;
+}
+
+export interface AdminProgramRecord {
+  id: string;
+  code: string;
+  name: string;
+  supportType: string;
+  description: string;
+  estimatedProcessingDays: number | null;
+  isActive: boolean;
+  requirements: AdminProgramRequirementRecord[];
+}
+
+export interface SaveAdminProgramInput {
+  id?: string;
+  code: string;
+  name: string;
+  supportType: string;
+  description: string;
+  estimatedProcessingDays: number | null;
+  isActive: boolean;
+  requirements: Array<{
+    id?: string;
+    name: string;
+    description: string | null;
+    documentType: string | null;
+    isRequired: boolean;
+    sortOrder: number;
+  }>;
 }
 
 export interface AdminCaseDocumentRecord {

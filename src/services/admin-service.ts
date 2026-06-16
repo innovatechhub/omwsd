@@ -8,6 +8,8 @@ import type {
   AdminBarangayMetric,
   AdminDashboardMetrics,
   AdminQueueItem,
+  AdminProgramRecord,
+  SaveAdminProgramInput,
   AdminResidentIdFile,
   AdminResidentRecord,
 } from "@/types/admin";
@@ -19,6 +21,7 @@ import type {
   SectorRegistrationStatus,
   SectorType,
 } from "@/types/sector";
+import type { FamilyCompositionMember } from "@/types/application";
 import {
   formatAppointmentStatusLabel,
   formatSectorStatusLabel,
@@ -211,6 +214,29 @@ function derivePriority(urgency: string | null): AdminApplicationRecord["priorit
   return "Normal";
 }
 
+function mapFamilyComposition(value: unknown): FamilyCompositionMember[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const member = item as Record<string, unknown>;
+
+      return {
+        name: typeof member.name === "string" ? member.name : "",
+        educationalAttainment:
+          typeof member.educationalAttainment === "string" ? member.educationalAttainment : "",
+        age: typeof member.age === "string" ? member.age : "",
+        relationship: typeof member.relationship === "string" ? member.relationship : "",
+        occupation: typeof member.occupation === "string" ? member.occupation : "",
+        monthlyIncome: typeof member.monthlyIncome === "string" ? member.monthlyIncome : "",
+      };
+    })
+    .filter((member) => Object.values(member).some(Boolean))
+    .slice(0, 7);
+}
+
 async function getCurrentUserId() {
   const {
     data: { user },
@@ -294,7 +320,7 @@ export async function getAdminApplications() {
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id, reference_number, applicant_full_name, applicant_barangay, urgency, submitted_at, admin_remarks, request_reason, status, assistance_types(name)",
+      "id, reference_number, applicant_full_name, applicant_barangay, applicant_municipality, urgency, submitted_at, admin_remarks, request_reason, status, birth_date, sex, civil_status, contact_number, address_line, household_size, monthly_income, educational_attainment, occupation, relationship_to_beneficiary, family_composition, assistance_types(name)",
     )
     .order("submitted_at", { ascending: false });
 
@@ -312,11 +338,23 @@ export async function getAdminApplications() {
       assistance: String(assistanceType?.name ?? "Unknown assistance"),
       status: mapStatus(typeof item.status === "string" ? item.status : null),
       barangay: String(item.applicant_barangay ?? "Not specified"),
+      municipality: String(item.applicant_municipality ?? "Pandan"),
       priority: derivePriority(typeof item.urgency === "string" ? item.urgency : null),
       submittedAt: formatDate(typeof item.submitted_at === "string" ? item.submitted_at : null),
       submittedAtRaw: typeof item.submitted_at === "string" ? item.submitted_at : null,
       requestReason: String(item.request_reason ?? ""),
       remarks: String(item.admin_remarks ?? ""),
+      birthDate: typeof item.birth_date === "string" ? item.birth_date : null,
+      sex: typeof item.sex === "string" ? item.sex : null,
+      civilStatus: typeof item.civil_status === "string" ? item.civil_status : null,
+      contactNumber: String(item.contact_number ?? ""),
+      addressLine: String(item.address_line ?? ""),
+      householdSize: typeof item.household_size === "number" ? item.household_size : null,
+      monthlyIncome: typeof item.monthly_income === "number" ? item.monthly_income : null,
+      educationalAttainment: typeof item.educational_attainment === "string" ? item.educational_attainment : null,
+      occupation: typeof item.occupation === "string" ? item.occupation : null,
+      relationshipToBeneficiary: typeof item.relationship_to_beneficiary === "string" ? item.relationship_to_beneficiary : null,
+      familyComposition: mapFamilyComposition(item.family_composition),
     } satisfies AdminApplicationRecord;
   });
 }
@@ -749,6 +787,42 @@ export async function getMonthlyApplicationVolume() {
   }));
 }
 
+export interface AdminStaffUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  roleLabel: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export async function getAdminStaffUsers(): Promise<AdminStaffUser[]> {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, role, is_active, created_at")
+    .in("role", ["admin", "super_admin", "social_worker"])
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const role = String(row.role ?? "");
+    return {
+      id: String(row.id ?? ""),
+      email: String(row.email ?? ""),
+      fullName: String(row.full_name ?? ""),
+      role,
+      roleLabel:
+        role === "admin" || role === "super_admin" ? "Administrator" : "Staff",
+      isActive: row.is_active !== false,
+      createdAt: String(row.created_at ?? ""),
+    };
+  });
+}
+
 export async function getAdminSettings() {
   assertSupabaseConfigured();
 
@@ -795,6 +869,186 @@ export async function saveAdminSetting(settingKey: string, settingValue: Record<
   }
 
   void writeAuditLog("settings.updated", "settings", null, { setting_key: settingKey });
+}
+
+function normalizeProgramCode(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function formatProgramCode(value: string) {
+  return value.trim().replace(/-/g, "_").toUpperCase();
+}
+
+function mapAdminProgram(row: Record<string, unknown>): AdminProgramRecord {
+  const requirements = Array.isArray(row.assistance_requirements)
+    ? (row.assistance_requirements as Array<Record<string, unknown>>)
+    : [];
+
+  return {
+    id: String(row.id ?? ""),
+    code: formatProgramCode(String(row.slug ?? "")),
+    name: String(row.name ?? "Untitled program"),
+    supportType: String(row.category ?? "General Assistance"),
+    description: String(row.description ?? ""),
+    estimatedProcessingDays:
+      typeof row.estimated_processing_days === "number"
+        ? row.estimated_processing_days
+        : null,
+    isActive: row.is_active !== false,
+    requirements: requirements
+      .map((requirement) => ({
+        id: String(requirement.id ?? ""),
+        name: String(requirement.name ?? ""),
+        description:
+          typeof requirement.description === "string" ? requirement.description : null,
+        documentType:
+          typeof requirement.document_type === "string" ? requirement.document_type : null,
+        isRequired: requirement.is_required !== false,
+        sortOrder:
+          typeof requirement.sort_order === "number" ? requirement.sort_order : 0,
+      }))
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
+  };
+}
+
+export async function getAdminPrograms(): Promise<AdminProgramRecord[]> {
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("assistance_types")
+    .select(
+      "id, slug, name, category, description, estimated_processing_days, is_active, assistance_requirements(id, name, description, document_type, is_required, sort_order)",
+    )
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map(mapAdminProgram);
+}
+
+export async function saveAdminProgram(input: SaveAdminProgramInput) {
+  assertSupabaseConfigured();
+
+  const slug = normalizeProgramCode(input.code || input.name);
+
+  if (!slug) {
+    throw new Error("Program code is required.");
+  }
+
+  const payload = {
+    slug,
+    name: input.name.trim(),
+    category: input.supportType.trim() || "General Assistance",
+    description: input.description.trim() || null,
+    estimated_processing_days: input.estimatedProcessingDays,
+    is_active: input.isActive,
+  };
+
+  const programMutation = input.id
+    ? supabase
+        .from("assistance_types")
+        .update(payload)
+        .eq("id", input.id)
+        .select("id")
+        .single()
+    : supabase
+        .from("assistance_types")
+        .insert(payload)
+        .select("id")
+        .single();
+
+  const { data: program, error: programError } = await programMutation;
+
+  if (programError) {
+    throw programError;
+  }
+
+  const programId = String((program as Record<string, unknown>).id ?? input.id ?? "");
+  const normalizedRequirements = input.requirements
+    .map((requirement, index) => ({
+      ...requirement,
+      name: requirement.name.trim(),
+      description: requirement.description?.trim() || null,
+      documentType: requirement.documentType?.trim() || null,
+      sortOrder: index,
+    }))
+    .filter((requirement) => requirement.name);
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("assistance_requirements")
+    .select("id")
+    .eq("assistance_type_id", programId);
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  const retainedIds = new Set(
+    normalizedRequirements
+      .map((requirement) => requirement.id)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  const staleIds = ((existingRows ?? []) as Array<Record<string, unknown>>)
+    .map((row) => String(row.id ?? ""))
+    .filter((id) => id && !retainedIds.has(id));
+
+  for (const id of staleIds) {
+    const { error } = await supabase.from("assistance_requirements").delete().eq("id", id);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  for (const requirement of normalizedRequirements) {
+    const requirementPayload = {
+      assistance_type_id: programId,
+      name: requirement.name,
+      description: requirement.description,
+      document_type: requirement.documentType,
+      is_required: requirement.isRequired,
+      sort_order: requirement.sortOrder,
+    };
+
+    const { error } = requirement.id
+      ? await supabase
+          .from("assistance_requirements")
+          .update(requirementPayload)
+          .eq("id", requirement.id)
+      : await supabase.from("assistance_requirements").insert(requirementPayload);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  void writeAuditLog("settings.updated", "assistance_type", programId, {
+    program: input.name,
+  });
+}
+
+export async function updateAdminProgramStatus(programId: string, isActive: boolean) {
+  assertSupabaseConfigured();
+
+  const { error } = await supabase
+    .from("assistance_types")
+    .update({ is_active: isActive })
+    .eq("id", programId);
+
+  if (error) {
+    throw error;
+  }
+
+  void writeAuditLog("settings.updated", "assistance_type", programId, {
+    is_active: isActive,
+  });
 }
 
 export async function updateRequirementVerificationStatus(

@@ -5,6 +5,7 @@ import { uploadFile } from "@/services/storage-service";
 import type {
   AssistanceRequestFormValues,
   AssistanceRequestSubmissionResult,
+  FamilyCompositionMember,
   ResidentAssistanceRequestInput,
 } from "@/types/application";
 
@@ -15,6 +16,22 @@ function parseNumber(value: string) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeFamilyComposition(
+  familyComposition: FamilyCompositionMember[],
+): FamilyCompositionMember[] {
+  return familyComposition
+    .map((member) => ({
+      name: member.name.trim(),
+      educationalAttainment: member.educationalAttainment.trim(),
+      age: member.age.trim(),
+      relationship: member.relationship.trim(),
+      occupation: member.occupation.trim(),
+      monthlyIncome: member.monthlyIncome.trim(),
+    }))
+    .filter((member) => Object.values(member).some(Boolean))
+    .slice(0, 7);
 }
 
 function splitFullName(fullName: string) {
@@ -126,6 +143,7 @@ async function uploadDocuments(
   applicationId: string,
   files: File[],
   bucket: string,
+  applicationRequirementId?: string | null,
 ) {
   const uploaded: Array<{
     bucket: string;
@@ -160,6 +178,7 @@ async function uploadDocuments(
   const { error } = await supabase.from("uploaded_documents").insert(
     uploaded.map((document) => ({
       application_id: applicationId,
+      application_requirement_id: applicationRequirementId ?? null,
       ...document,
       uploaded_by: userId,
     })),
@@ -170,7 +189,88 @@ async function uploadDocuments(
   }
 }
 
-async function seedApplicationRequirements(applicationId: string, assistanceTypeId: string) {
+export interface AssistanceRequirementTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  isRequired: boolean;
+  sortOrder: number;
+}
+
+export interface AssistanceTypeOption {
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+  turnaround: string;
+}
+
+export async function getResidentAssistanceTypes(): Promise<AssistanceTypeOption[]> {
+  if (!isSupabaseConfigured) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("assistance_types")
+    .select("slug, name, category, description, estimated_processing_days")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const processingDays =
+      typeof row.estimated_processing_days === "number" ? row.estimated_processing_days : null;
+
+    return {
+      slug: String(row.slug ?? ""),
+      title: String(row.name ?? "Assistance program"),
+      category: String(row.category ?? "Assistance"),
+      summary:
+        typeof row.description === "string" && row.description.trim()
+          ? row.description
+          : "Submit this assistance request for OMSWD review.",
+      turnaround:
+        processingDays === null
+          ? "Processing time varies after review"
+          : `Typically reviewed within ${processingDays} working day${processingDays === 1 ? "" : "s"}`,
+    };
+  });
+}
+
+export async function getAssistanceRequirements(
+  assistanceTypeSlug: string,
+): Promise<AssistanceRequirementTemplate[]> {
+  if (!assistanceTypeSlug) return [];
+
+  const { data, error } = await supabase
+    .from("assistance_types")
+    .select("id, assistance_requirements(id, name, description, is_required, sort_order)")
+    .eq("slug", assistanceTypeSlug)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return [];
+
+  const rows = (data as Record<string, unknown>).assistance_requirements as Array<Record<string, unknown>> | null;
+
+  return ((rows ?? []) as Array<Record<string, unknown>>)
+    .map((row) => ({
+      id: String(row.id ?? ""),
+      name: String(row.name ?? ""),
+      description: typeof row.description === "string" ? row.description : null,
+      isRequired: row.is_required === true,
+      sortOrder: typeof row.sort_order === "number" ? row.sort_order : 0,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+}
+
+async function seedApplicationRequirements(
+  applicationId: string,
+  assistanceTypeId: string,
+): Promise<Array<{ applicationRequirementId: string; requirementTemplateId: string }>> {
   const { data: requirementTemplates, error: requirementTemplateError } = await supabase
     .from("assistance_requirements")
     .select("id")
@@ -185,23 +285,29 @@ async function seedApplicationRequirements(applicationId: string, assistanceType
     .filter(Boolean);
 
   if (requirementIds.length === 0) {
-    return;
+    return [];
   }
 
-  const { error } = await supabase.from("application_requirements").upsert(
-    requirementIds.map((requirementId) => ({
-      application_id: applicationId,
-      requirement_id: requirementId,
-      status: "pending",
-    })),
-    {
-      onConflict: "application_id,requirement_id",
-    },
-  );
+  const { data, error } = await supabase
+    .from("application_requirements")
+    .upsert(
+      requirementIds.map((requirementId) => ({
+        application_id: applicationId,
+        requirement_id: requirementId,
+        status: "pending",
+      })),
+      { onConflict: "application_id,requirement_id" },
+    )
+    .select("id, requirement_id");
 
   if (error) {
     throw error;
   }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    applicationRequirementId: String(row.id ?? ""),
+    requirementTemplateId: String(row.requirement_id ?? ""),
+  }));
 }
 
 export async function createAssistanceRequest(
@@ -369,6 +475,10 @@ export async function createResidentAssistanceRequest(
       household_size: householdSize,
       monthly_income: monthlyIncome,
       consent_accepted: input.consentAccepted,
+      relationship_to_beneficiary: input.relationshipToBeneficiary || null,
+      educational_attainment: input.educationalAttainment || null,
+      occupation: input.occupation || null,
+      family_composition: normalizeFamilyComposition(input.familyComposition),
     })
     .select("id")
     .single();
@@ -376,9 +486,38 @@ export async function createResidentAssistanceRequest(
   if (applicationError) throw applicationError;
 
   const applicationId = (application as Record<string, unknown>).id as string;
-  await seedApplicationRequirements(applicationId, (assistanceType as Record<string, unknown>).id as string);
+  const seededRequirements = await seedApplicationRequirements(
+    applicationId,
+    (assistanceType as Record<string, unknown>).id as string,
+  );
 
-  await uploadDocuments(user.id, referenceNumber, applicationId, input.supportingDocuments, "application-documents");
+  // Upload per-requirement files, linking each to its application_requirement row
+  for (const entry of input.requirementFiles) {
+    if (entry.files.length === 0) continue;
+    const matched = seededRequirements.find(
+      (r) => r.requirementTemplateId === entry.requirementTemplateId,
+    );
+    await uploadDocuments(
+      user.id,
+      referenceNumber,
+      applicationId,
+      entry.files,
+      "application-documents",
+      matched?.applicationRequirementId ?? null,
+    );
+  }
+
+  // Upload any general supporting documents (not linked to a requirement)
+  if (input.supportingDocuments.length > 0) {
+    await uploadDocuments(
+      user.id,
+      referenceNumber,
+      applicationId,
+      input.supportingDocuments,
+      "application-documents",
+      null,
+    );
+  }
 
   const { error: statusError } = await supabase.from("status_histories").insert({
     application_id: applicationId,

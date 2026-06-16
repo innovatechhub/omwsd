@@ -246,22 +246,23 @@ export async function updateResidentProfileSettings(
 
   const { firstName, middleName, lastName } = splitFullName(values.fullName);
 
-  await resolveMutation(
-    supabase.from("profiles").upsert(
-      {
-        id: userId,
-        email: values.email,
+  const updatedProfile = await resolveMutation(
+    supabase
+      .from("profiles")
+      .update({
         full_name: values.fullName,
         phone_number: values.phoneNumber || null,
         barangay: values.barangay || null,
         municipality: values.municipality || null,
-        role: "resident",
-      },
-      {
-        onConflict: "id",
-      },
-    ),
+      })
+      .eq("id", userId)
+      .select("id")
+      .maybeSingle(),
   );
+
+  if (!updatedProfile) {
+    throw new Error("Resident profile record was not found. Contact OMSWD to verify your account.");
+  }
 
   await resolveMutation(
     supabase.from("residents").upsert(
