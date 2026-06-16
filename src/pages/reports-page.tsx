@@ -108,18 +108,8 @@ export function ReportsPage() {
       );
   }, [reportsQuery.data?.applications, selectedMonthLabels, barangayFilter, dateFrom, dateTo]);
 
-  const totals = useMemo(() => {
-    const totalApplications = filteredSeries.reduce((sum, item) => sum + item.applications, 0);
-    const averagePerMonth =
-      filteredSeries.length > 0 ? Math.round(totalApplications / filteredSeries.length) : 0;
-    const peak =
-      filteredSeries.length > 0 ? Math.max(...filteredSeries.map((item) => item.applications)) : 0;
-    return { totalApplications, averagePerMonth, peak };
-  }, [filteredSeries]);
-
   const blankRows = Math.max(12 - formRows.length, 0);
   const sectorMap = reportsQuery.data?.sectorMap ?? new Map<string, Set<string>>();
-  const metrics = reportsQuery.data?.metrics;
   const isLoading = reportsQuery.isLoading;
   const isError = reportsQuery.isError;
 
