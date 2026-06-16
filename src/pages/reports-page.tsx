@@ -1,32 +1,53 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download } from "lucide-react";
-import { toast } from "sonner";
+import { Printer } from "lucide-react";
 
 import {
+  getAdminApplications,
   getAdminDashboardMetrics,
-  getApplicationsByBarangay,
   getMonthlyApplicationVolume,
 } from "@/services/admin-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { printDilgDataForm } from "@/lib/print-dilg-data-form";
+import type { AdminApplicationRecord } from "@/types/admin";
 
-type ReportSeriesPoint = {
-  month: string;
-  applications: number;
-};
+function formatFormDate(value: string | null) {
+  if (!value) {
+    return "";
+  }
 
-function exportCsv(series: ReportSeriesPoint[]) {
-  const header = "month,applications";
-  const rows = series.map((item) => `${item.month},${item.applications}`);
-  const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "omswd-admin-report.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatMonthLabel(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatAddress(application: AdminApplicationRecord) {
+  return [application.addressLine, application.barangay, application.municipality]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function isMale(value: string | null) {
+  return value?.trim().toLowerCase() === "male";
+}
+
+function isFemale(value: string | null) {
+  return value?.trim().toLowerCase() === "female";
 }
 
 export function ReportsPage() {
@@ -35,12 +56,12 @@ export function ReportsPage() {
   const reportsQuery = useQuery({
     queryKey: ["admin", "reports"],
     queryFn: async () => {
-      const [monthlyVolume, barangays, metrics] = await Promise.all([
+      const [monthlyVolume, applications, metrics] = await Promise.all([
         getMonthlyApplicationVolume(),
-        getApplicationsByBarangay(),
+        getAdminApplications(),
         getAdminDashboardMetrics(),
       ]);
-      return { monthlyVolume, barangays, metrics };
+      return { monthlyVolume, applications, metrics };
     },
   });
 
@@ -50,6 +71,22 @@ export function ReportsPage() {
     () => fullSeries.slice(Math.max(fullSeries.length - visibleMonths, 0)),
     [fullSeries, visibleMonths],
   );
+
+  const selectedMonthLabels = useMemo(
+    () => new Set(filteredSeries.map((item) => item.month)),
+    [filteredSeries],
+  );
+
+  const formRows = useMemo(
+    () =>
+      (reportsQuery.data?.applications ?? [])
+        .filter((application) => selectedMonthLabels.has(formatMonthLabel(application.submittedAtRaw)))
+        .sort((left, right) =>
+          (left.submittedAtRaw ?? "").localeCompare(right.submittedAtRaw ?? ""),
+        ),
+    [reportsQuery.data?.applications, selectedMonthLabels],
+  );
+
   const totals = useMemo(() => {
     const totalApplications = filteredSeries.reduce((sum, item) => sum + item.applications, 0);
     const averagePerMonth =
@@ -59,31 +96,17 @@ export function ReportsPage() {
     return { totalApplications, averagePerMonth, peak };
   }, [filteredSeries]);
 
-  const topBarangays = reportsQuery.data?.barangays ?? [];
-  const totalTopBarangayVolume = useMemo(
-    () => topBarangays.reduce((sum, b) => sum + b.applications, 0),
-    [topBarangays],
-  );
-
+  const blankRows = Math.max(12 - formRows.length, 0);
   const metrics = reportsQuery.data?.metrics;
-  const latestMonth = filteredSeries[filteredSeries.length - 1]?.applications ?? 0;
-  const previousMonth =
-    filteredSeries.length > 1 ? (filteredSeries[filteredSeries.length - 2]?.applications ?? 0) : 0;
-  const monthOverMonth = latestMonth - previousMonth;
-  const pendingRatio = metrics?.totalApplications
-    ? Math.round(((metrics.pendingVerification ?? 0) / metrics.totalApplications) * 100)
-    : 0;
-
   const isLoading = reportsQuery.isLoading;
   const isError = reportsQuery.isError;
 
   return (
     <div className="space-y-6">
-      {/* Toolbar */}
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Application Reports</h2>
-          <p className="text-sm text-muted-foreground">Monthly volume and barangay breakdown</p>
+          <p className="text-sm text-muted-foreground">AICS data form preview and monthly summary</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onChange={(e) => setPeriod(e.target.value)}>
@@ -91,21 +114,13 @@ export function ReportsPage() {
             <option value="6">Last 6 months</option>
             <option value="12">Last 12 months</option>
           </Select>
-          <Button
-            variant="secondary"
-            disabled={filteredSeries.length === 0}
-            onClick={() => {
-              exportCsv(filteredSeries);
-              toast.success("CSV report exported.");
-            }}
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
+          <Button variant="secondary" onClick={printDilgDataForm}>
+            <Printer className="h-4 w-4" />
+            Print data form
           </Button>
         </div>
       </section>
 
-      {/* Summary row */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Period volume", value: String(totals.totalApplications) },
@@ -122,176 +137,106 @@ export function ReportsPage() {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        {/* Monthly volume table */}
-        <Card>
+      <section>
+        <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Monthly application volume</CardTitle>
-            <CardDescription>Last {period} months of submitted assistance requests</CardDescription>
+            <CardTitle>AICS data form</CardTitle>
+            <CardDescription>
+              Same table layout as the printable AICS data form for the last {period} months.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
-              <p className="px-6 py-8 text-sm text-muted-foreground">Loading report data...</p>
+              <p className="px-6 py-8 text-sm text-muted-foreground">Loading AICS data...</p>
             ) : isError ? (
               <p className="px-6 py-8 text-sm text-destructive">Unable to load reporting data.</p>
-            ) : filteredSeries.length === 0 ? (
+            ) : formRows.length === 0 ? (
               <p className="px-6 py-8 text-sm text-muted-foreground">No data available yet.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[1040px] table-fixed border-collapse text-sm">
+                  <colgroup>
+                    <col className="w-[9%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[25%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[5%]" />
+                  </colgroup>
                   <thead>
-                    <tr className="border-b bg-muted/40">
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Month
+                    <tr>
+                      <th className="border border-slate-400 bg-stone-50 px-3 py-3 text-left text-xs font-extrabold uppercase tracking-[0.08em]">
+                        Date
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Applications
+                      <th className="border border-slate-400 bg-stone-50 px-3 py-3 text-left text-xs font-extrabold uppercase tracking-[0.08em]">
+                        Name
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        vs. Prev
+                      <th className="border border-slate-400 bg-stone-50 px-3 py-3 text-left text-xs font-extrabold uppercase tracking-[0.08em]">
+                        Address
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        % of Period
+                      <th className="border border-slate-400 bg-sky-400 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
+                        Male
+                      </th>
+                      <th className="border border-slate-400 bg-rose-400 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
+                        Female
+                      </th>
+                      <th className="border border-slate-400 bg-yellow-300 px-2 py-3 text-center text-xs font-extrabold uppercase leading-tight tracking-[0.02em] text-slate-950">
+                        Solo<br />Parent
+                      </th>
+                      <th className="border border-slate-400 bg-green-700 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
+                        4Ps
+                      </th>
+                      <th className="border border-slate-400 bg-rose-500 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
+                        Senior
+                      </th>
+                      <th className="border border-slate-400 bg-slate-500 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
+                        PWD
+                      </th>
+                      <th className="border border-slate-400 bg-stone-50 px-3 py-3 text-center text-xs font-extrabold uppercase tracking-[0.08em]">
+                        Signature
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSeries.map((row, i) => {
-                      const prev = i > 0 ? filteredSeries[i - 1].applications : null;
-                      const diff = prev !== null ? row.applications - prev : null;
-                      const share =
-                        totals.totalApplications > 0
-                          ? Math.round((row.applications / totals.totalApplications) * 100)
-                          : 0;
-                      const isPeak = row.applications === totals.peak && totals.peak > 0;
-
-                      return (
-                        <tr key={row.month} className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="px-6 py-3 font-medium">
-                            {row.month}
-                            {isPeak && (
-                              <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                                peak
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3 text-right font-semibold">
-                            {row.applications}
-                          </td>
-                          <td className="px-6 py-3 text-right">
-                            {diff === null ? (
-                              <span className="text-muted-foreground">—</span>
-                            ) : (
-                              <span
-                                className={
-                                  diff > 0
-                                    ? "text-emerald-600"
-                                    : diff < 0
-                                    ? "text-red-500"
-                                    : "text-muted-foreground"
-                                }
-                              >
-                                {diff > 0 ? "+" : ""}
-                                {diff}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3 text-right text-muted-foreground">{share}%</td>
-                        </tr>
-                      );
-                    })}
+                    {formRows.map((application) => (
+                      <tr key={application.id} className="hover:bg-muted/20">
+                        <td className="h-10 border border-slate-400 px-3 py-2 text-xs font-medium">
+                          {formatFormDate(application.submittedAtRaw)}
+                        </td>
+                        <td className="h-10 border border-slate-400 px-3 py-2 font-medium">
+                          {application.resident}
+                        </td>
+                        <td className="h-10 border border-slate-400 px-3 py-2 text-xs text-muted-foreground">
+                          {formatAddress(application)}
+                        </td>
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center font-bold">
+                          {isMale(application.sex) ? "1" : ""}
+                        </td>
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center font-bold">
+                          {isFemale(application.sex) ? "1" : ""}
+                        </td>
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
+                        <td className="h-10 border border-slate-400 px-3 py-2"></td>
+                      </tr>
+                    ))}
+                    {Array.from({ length: blankRows }, (_, index) => (
+                      <tr key={`blank-${index}`}>
+                        {Array.from({ length: 10 }, (_, cellIndex) => (
+                          <td
+                            key={cellIndex}
+                            className="h-10 border border-slate-400 px-3 py-2"
+                          ></td>
+                        ))}
+                      </tr>
+                    ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="border-t bg-muted/20">
-                      <td className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        Total
-                      </td>
-                      <td className="px-6 py-3 text-right font-bold">{totals.totalApplications}</td>
-                      <td className="px-6 py-3 text-right">
-                        <span
-                          className={
-                            monthOverMonth > 0
-                              ? "text-emerald-600"
-                              : monthOverMonth < 0
-                              ? "text-red-500"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {monthOverMonth > 0 ? "+" : ""}
-                          {monthOverMonth !== 0 ? monthOverMonth : "—"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3 text-right text-muted-foreground">{pendingRatio}% pending</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Barangay table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Barangay demand snapshot</CardTitle>
-            <CardDescription>Highest request volume from current application records</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <p className="px-6 py-8 text-sm text-muted-foreground">Loading barangay data...</p>
-            ) : isError ? (
-              <p className="px-6 py-8 text-sm text-destructive">Unable to load barangay data.</p>
-            ) : topBarangays.length === 0 ? (
-              <p className="px-6 py-8 text-sm text-muted-foreground">
-                Barangay data will appear once applications are recorded.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/40">
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        #
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Barangay
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Applications
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Share
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topBarangays.map((barangay, index) => {
-                      const share =
-                        totalTopBarangayVolume > 0
-                          ? Math.round((barangay.applications / totalTopBarangayVolume) * 100)
-                          : 0;
-
-                      return (
-                        <tr key={barangay.name} className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="px-6 py-3 text-muted-foreground">{index + 1}</td>
-                          <td className="px-6 py-3 font-medium">{barangay.name}</td>
-                          <td className="px-6 py-3 text-right font-semibold">
-                            {barangay.applications}
-                          </td>
-                          <td className="px-6 py-3 text-right text-muted-foreground">{share}%</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t bg-muted/20">
-                      <td colSpan={2} className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        Total
-                      </td>
-                      <td className="px-6 py-3 text-right font-bold">{totalTopBarangayVolume}</td>
-                      <td className="px-6 py-3 text-right text-muted-foreground">100%</td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             )}

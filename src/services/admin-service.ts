@@ -1051,6 +1051,36 @@ export async function updateAdminProgramStatus(programId: string, isActive: bool
   });
 }
 
+export async function deleteAdminProgram(programId: string) {
+  assertSupabaseConfigured();
+
+  const { count, error: countError } = await supabase
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .eq("assistance_type_id", programId);
+
+  if (countError) {
+    throw countError;
+  }
+
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      `This program is used by ${count} application${count === 1 ? "" : "s"}. Disable it instead to keep existing records intact.`,
+    );
+  }
+
+  const { error } = await supabase
+    .from("assistance_types")
+    .delete()
+    .eq("id", programId);
+
+  if (error) {
+    throw error;
+  }
+
+  void writeAuditLog("settings.deleted", "assistance_type", programId, {});
+}
+
 export async function updateRequirementVerificationStatus(
   requirementId: string,
   status: "approved" | "rejected" | "needs_resubmission",

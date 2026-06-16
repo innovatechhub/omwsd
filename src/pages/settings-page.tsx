@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { createStaffUser, updateStaffUser } from "@/services/auth-service";
 import {
+  deleteAdminProgram,
   getAdminPrograms,
   getAdminStaffUsers,
   getAuditLogs,
@@ -273,6 +274,27 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
     }
   }
 
+  async function handleDeleteProgram(program: AdminProgramRecord) {
+    const confirmed = window.confirm(
+      `Delete "${program.name}"? This is permanent and only works when no applications use this program.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSavingSection("program");
+      await deleteAdminProgram(program.id);
+      await programsQuery.refetch();
+      toast.success(`${program.name} deleted.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete program.");
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
   async function handleAddUser() {
     setAddUserError("");
     const fullName = newUserName.trim();
@@ -462,7 +484,7 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
                         <TableHead>Support type</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Attachments</TableHead>
-                        {!isResidentView ? <TableHead className="w-[150px]">Actions</TableHead> : null}
+                        {!isResidentView ? <TableHead className="w-[210px]">Actions</TableHead> : null}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -508,6 +530,17 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
                                     <Power className="h-3.5 w-3.5" />
                                   )}
                                   {program.isActive ? "Disable" : "Enable"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-destructive"
+                                  disabled={savingSection === "program"}
+                                  onClick={() => void handleDeleteProgram(program)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Delete
                                 </Button>
                               </div>
                             </TableCell>
