@@ -134,7 +134,12 @@ function mapCaseRequirement(
     remarks: typeof row.remarks === "string" ? row.remarks : null,
     reviewedAt: typeof row.reviewed_at === "string" ? row.reviewed_at : null,
     reviewedAtLabel: formatDate(typeof row.reviewed_at === "string" ? row.reviewed_at : null),
-    documents: documents.filter((document) => document.applicationRequirementId === requirementRecordId),
+    documents: documents.filter(
+      (document) =>
+        document.applicationRequirementId === requirementRecordId ||
+        (document.applicationRequirementId === null &&
+          document.requirementName === String(requirement?.name ?? "")),
+    ),
     isActionable: true,
   } satisfies AdminCaseRequirementRecord;
 }
@@ -512,7 +517,11 @@ export async function getAdminApplicationCaseDetails(
 
   const documents = ((documentRows ?? []) as Array<Record<string, unknown>>).map((row) => {
     const reqId = typeof row.application_requirement_id === "string" ? row.application_requirement_id : null;
-    const requirementName = reqId ? (requirementNameById.get(reqId) ?? "General") : "General";
+    const remarksName = typeof row.remarks === "string" && row.remarks.trim() ? row.remarks : null;
+    const rawFileName = typeof row.file_name === "string" ? row.file_name.replace(/^\d+[-_]/, "").replace(/\.[^.]+$/, "") : null;
+    const requirementName = reqId
+      ? (requirementNameById.get(reqId) ?? remarksName ?? rawFileName ?? "General")
+      : (remarksName ?? rawFileName ?? "General");
     return mapCaseDocument(row, requirementName);
   });
   let requirements = requirementRows

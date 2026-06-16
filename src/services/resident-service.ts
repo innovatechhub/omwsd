@@ -48,6 +48,12 @@ function formatStatusLabel(status: string | null | undefined) {
       return "For correction";
     case "needs_resubmission":
       return "Needs resubmission";
+    case "cancelled":
+      return "Cancelled";
+    case "rejected":
+      return "Rejected";
+    case "approved":
+      return "Approved";
     default:
       return formatTokenLabel(status);
   }
@@ -248,7 +254,12 @@ function mapRequirement(
     reviewedAt: typeof row.reviewed_at === "string" ? row.reviewed_at : null,
     reviewedAtLabel:
       typeof row.reviewed_at === "string" ? formatLongDate(row.reviewed_at) : null,
-    documents: documents.filter((document) => document.applicationRequirementId === row.id),
+    documents: documents.filter(
+      (document) =>
+        document.applicationRequirementId === row.id ||
+        (document.applicationRequirementId === null &&
+          document.remarks === String(requirement?.name ?? "")),
+    ),
   } satisfies ResidentRequirement;
 }
 

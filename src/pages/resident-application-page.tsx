@@ -6,11 +6,14 @@ import {
   FileText,
   ListChecks,
   ShieldCheck,
+  Trash2,
   Upload,
+  XCircle,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { ResidentPageHeader } from "@/components/resident/resident-page-header";
 import { ResidentRequestAssistanceForm } from "@/components/resident/resident-request-assistance-form";
@@ -24,6 +27,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
 import { queryKeys } from "@/lib/query-keys";
+import { cancelResidentApplication, deleteResidentApplication } from "@/services/application-service";
+
+type ConfirmAction = "cancel" | "delete";
 
 type DetailsTab = "history" | "requirements" | "documents";
 
@@ -38,6 +44,37 @@ export function ResidentApplicationPage() {
   const [activeTab, setActiveTab] = useState<DetailsTab>("history");
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isActioning, setIsActioning] = useState(false);
+
+  async function handleConfirmAction() {
+    if (!application || !confirmAction) return;
+    setIsActioning(true);
+    try {
+      if (confirmAction === "cancel") {
+        await cancelResidentApplication(application.id);
+        toast.success("Application cancelled successfully.");
+      } else {
+        await deleteResidentApplication(application.id);
+        toast.success("Application deleted successfully.");
+      }
+      void queryClient.invalidateQueries({
+        queryKey: user ? queryKeys.resident.portal(user.id) : ["resident", "portal"],
+      });
+      setConfirmAction(null);
+    } catch (error) {
+      console.error("Cancel/delete error:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as Record<string, unknown>).message)
+            : "Action failed. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsActioning(false);
+    }
+  }
 
   useEffect(() => {
     const openRequest = searchParams.get("request");
@@ -115,16 +152,42 @@ export function ResidentApplicationPage() {
                   <TableCell>{application.submittedAtLabel}</TableCell>
                   <TableCell>{application.reviewedAtLabel ?? "Pending review"}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
-                      onClick={() => setIsDetailsModalOpen(true)}
-                    >
-                      <Eye className="h-4 w-4" />
-                      View details
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+                        onClick={() => setIsDetailsModalOpen(true)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        View details
+                      </Button>
+                      {["pending_verification", "under_review", "for_correction"].includes(application.status) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                          onClick={() => setConfirmAction("cancel")}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Cancel
+                        </Button>
+                      )}
+                      {application.status === "cancelled" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="border-red-200 bg-white text-red-600 hover:bg-red-50"
+                          onClick={() => setConfirmAction("delete")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -430,6 +493,48 @@ export function ResidentApplicationPage() {
             No application details available.
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={confirmAction !== null}
+        onClose={() => !isActioning && setConfirmAction(null)}
+        title={confirmAction === "delete" ? "Delete application" : "Cancel application"}
+        description={
+          confirmAction === "delete"
+            ? "This will permanently remove your application and all uploaded documents. This cannot be undone."
+            : "This will cancel your application. You can delete it afterwards or submit a new one."
+        }
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isActioning}
+              onClick={() => setConfirmAction(null)}
+            >
+              Go back
+            </Button>
+            <Button
+              type="button"
+              disabled={isActioning}
+              className={confirmAction === "delete" ? "bg-red-600 text-white hover:bg-red-700" : "bg-amber-600 text-white hover:bg-amber-700"}
+              onClick={() => void handleConfirmAction()}
+            >
+              {isActioning
+                ? "Please wait..."
+                : confirmAction === "delete"
+                  ? "Yes, delete"
+                  : "Yes, cancel"}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          {confirmAction === "delete"
+            ? `You are about to permanently delete application ${application?.referenceNumber ?? ""}. This action cannot be reversed.`
+            : `You are about to cancel application ${application?.referenceNumber ?? ""}. The OMSWD team will be notified.`}
+        </p>
       </Modal>
 
       <Modal

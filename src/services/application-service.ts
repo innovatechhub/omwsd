@@ -144,6 +144,7 @@ async function uploadDocuments(
   files: File[],
   bucket: string,
   applicationRequirementId?: string | null,
+  requirementName?: string,
 ) {
   const uploaded: Array<{
     bucket: string;
@@ -179,6 +180,7 @@ async function uploadDocuments(
     uploaded.map((document) => ({
       application_id: applicationId,
       application_requirement_id: applicationRequirementId ?? null,
+      remarks: requirementName ?? null,
       ...document,
       uploaded_by: userId,
     })),
@@ -433,6 +435,18 @@ export async function createResidentAssistanceRequest(
     throw new Error("Resident profile not found. Please complete your profile before submitting.");
   }
 
+  // Prevent duplicate submissions — block if there's already an active application
+  const { data: existing } = await supabase
+    .from("applications")
+    .select("id")
+    .eq("applicant_profile_id", user.id)
+    .not("status", "in", '("cancelled","rejected")')
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error("You already have an active application. Please wait for it to be resolved before submitting a new one.");
+  }
+
   const referenceNumber = generateReferenceNumber();
 
   const { data: assistanceType, error: assistanceTypeError } = await supabase
@@ -488,24 +502,18 @@ export async function createResidentAssistanceRequest(
   if (applicationError) throw applicationError;
 
   const applicationId = (application as Record<string, unknown>).id as string;
-  const seededRequirements = await seedApplicationRequirements(
-    applicationId,
-    (assistanceType as Record<string, unknown>).id as string,
-  );
 
-  // Upload per-requirement files, linking each to its application_requirement row
+  // Upload per-requirement files, storing the requirement name in remarks
   for (const entry of input.requirementFiles) {
     if (entry.files.length === 0) continue;
-    const matched = seededRequirements.find(
-      (r) => r.requirementTemplateId === entry.requirementTemplateId,
-    );
     await uploadDocuments(
       user.id,
       referenceNumber,
       applicationId,
       entry.files,
       "application-documents",
-      matched?.applicationRequirementId ?? null,
+      null,
+      entry.requirementName,
     );
   }
 
@@ -535,21 +543,22 @@ export async function createResidentAssistanceRequest(
 }
 
 export async function cancelResidentApplication(applicationId: string): Promise<void> {
-  assertSupabaseConfigured();
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
   const user = await requireAuthenticatedUser();
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("applications")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled" }, { count: "exact" })
     .eq("id", applicationId)
     .eq("applicant_profile_id", user.id)
     .in("status", ["pending_verification", "under_review", "for_correction"]);
 
   if (error) throw error;
+  if (count === 0) throw new Error("Unable to cancel — the application may already be cancelled or you lack permission. Check Supabase RLS UPDATE policy on the applications table.");
 }
 
 export async function deleteResidentApplication(applicationId: string): Promise<void> {
-  assertSupabaseConfigured();
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
   const user = await requireAuthenticatedUser();
 
   const { error } = await supabase

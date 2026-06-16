@@ -27,6 +27,7 @@ export interface AssistanceRequestSubmissionResult {
 
 export interface RequirementFileEntry {
   requirementTemplateId: string;
+  requirementName: string;
   files: File[];
 }
 

@@ -178,6 +178,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
         requestReason: values.requestReason,
         requirementFiles: Object.entries(requirementFiles).map(([requirementTemplateId, files]) => ({
           requirementTemplateId,
+          requirementName: requirements.find((r) => r.id === requirementTemplateId)?.name ?? "Document",
           files,
         })),
         supportingDocuments: generalFiles,
