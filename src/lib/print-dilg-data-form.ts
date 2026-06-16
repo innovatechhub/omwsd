@@ -1,3 +1,56 @@
+import type { AdminApplicationRecord } from "@/types/admin";
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatFormDate(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatGender(value: string | null) {
+  return value ? value.trim().replace(/_/g, " ") : "";
+}
+
+function formatAddress(application: AdminApplicationRecord) {
+  return [application.addressLine, application.barangay, application.municipality]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function dataRows(applications: AdminApplicationRecord[]) {
+  return applications
+    .map(
+      (application) => `
+        <tr>
+          <td>${escapeHtml(formatFormDate(application.submittedAtRaw))}</td>
+          <td>${escapeHtml(application.resident)}</td>
+          <td>${escapeHtml(formatAddress(application))}</td>
+          <td class="center capitalize">${escapeHtml(formatGender(application.sex))}</td>
+          <td class="category-cell"></td>
+          <td class="category-cell"></td>
+          <td class="category-cell"></td>
+          <td class="category-cell"></td>
+          <td></td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
 function blankRows(count: number) {
   return Array.from(
     { length: count },
@@ -6,8 +59,7 @@ function blankRows(count: number) {
         <td></td>
         <td></td>
         <td></td>
-        <td class="category-cell"></td>
-        <td class="category-cell"></td>
+        <td></td>
         <td class="category-cell"></td>
         <td class="category-cell"></td>
         <td class="category-cell"></td>
@@ -18,12 +70,13 @@ function blankRows(count: number) {
   ).join("");
 }
 
-export function printDilgDataForm(): void {
+export function printDilgDataForm(applications: AdminApplicationRecord[] = []): void {
   const today = new Intl.DateTimeFormat("en-PH", {
     year: "numeric",
     month: "long",
     day: "numeric",
   }).format(new Date());
+  const emptyRowCount = Math.max(24 - applications.length, 0);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -125,19 +178,22 @@ export function printDilgDataForm(): void {
       word-break: normal;
     }
     td {
-      font-size: 11px;
+      font-size: 10px;
+      overflow-wrap: anywhere;
     }
     .date-col { width: 8%; }
     .name-col { width: 22%; }
-    .address-col { width: 24%; }
+    .address-col { width: 25%; }
+    .gender-col { width: 8%; }
     .category-col { width: 6%; }
-    .signature-col { width: 10%; }
-    .male { background: #40a9d8; color: #183141; }
-    .female { background: #e95e72; color: #3a121a; }
+    .signature-col { width: 13%; }
+    .gender { background: #40a9d8; color: #183141; }
     .solo { background: #f3d549; color: #3f3510; }
     .fourps { background: #617d4d; color: #17210f; }
     .senior { background: #e85d6a; color: #3a121a; }
     .pwd { background: #5f6371; color: #111827; }
+    .center { text-align: center; }
+    .capitalize { text-transform: capitalize; }
     .category-cell { background: rgba(255, 255, 255, 0.18); }
     .footer-note {
       color: #6b7280;
@@ -165,14 +221,13 @@ export function printDilgDataForm(): void {
       </div>
       <div></div>
     </div>
-    <table aria-label="DILG data form">
+    <table aria-label="AICS data form">
       <thead>
         <tr>
           <th class="date-col">Date</th>
           <th class="name-col">Name</th>
           <th class="address-col">Address</th>
-          <th class="category-col male">Male</th>
-          <th class="category-col female">Female</th>
+          <th class="gender-col gender">Gender</th>
           <th class="category-col solo">Solo<br />Parent</th>
           <th class="category-col fourps">4Ps</th>
           <th class="category-col senior">Senior</th>
@@ -181,7 +236,8 @@ export function printDilgDataForm(): void {
         </tr>
       </thead>
       <tbody>
-        ${blankRows(24)}
+        ${dataRows(applications)}
+        ${blankRows(emptyRowCount)}
       </tbody>
     </table>
     <div class="footer-note">Printed from OMSWD Portal</div>

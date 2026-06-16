@@ -42,12 +42,8 @@ function formatAddress(application: AdminApplicationRecord) {
     .join(", ");
 }
 
-function isMale(value: string | null) {
-  return value?.trim().toLowerCase() === "male";
-}
-
-function isFemale(value: string | null) {
-  return value?.trim().toLowerCase() === "female";
+function formatGender(value: string | null) {
+  return value ? value.trim().replace(/_/g, " ") : "";
 }
 
 export function ReportsPage() {
@@ -114,7 +110,7 @@ export function ReportsPage() {
             <option value="6">Last 6 months</option>
             <option value="12">Last 12 months</option>
           </Select>
-          <Button variant="secondary" onClick={printDilgDataForm}>
+          <Button variant="secondary" onClick={() => printDilgDataForm(formRows)}>
             <Printer className="h-4 w-4" />
             Print data form
           </Button>
@@ -154,17 +150,15 @@ export function ReportsPage() {
               <p className="px-6 py-8 text-sm text-muted-foreground">No data available yet.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1040px] table-fixed border-collapse text-sm">
+                <table className="w-full min-w-[920px] table-fixed border-collapse text-sm">
                   <colgroup>
-                    <col className="w-[9%]" />
-                    <col className="w-[24%]" />
+                    <col className="w-[10%]" />
                     <col className="w-[25%]" />
-                    <col className="w-[6%]" />
+                    <col className="w-[29%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[8%]" />
                     <col className="w-[6%]" />
                     <col className="w-[7%]" />
-                    <col className="w-[6%]" />
-                    <col className="w-[7%]" />
-                    <col className="w-[5%]" />
                     <col className="w-[5%]" />
                   </colgroup>
                   <thead>
@@ -178,11 +172,8 @@ export function ReportsPage() {
                       <th className="border border-slate-400 bg-stone-50 px-3 py-3 text-left text-xs font-extrabold uppercase tracking-[0.08em]">
                         Address
                       </th>
-                      <th className="border border-slate-400 bg-sky-400 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
-                        Male
-                      </th>
-                      <th className="border border-slate-400 bg-rose-400 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
-                        Female
+                      <th className="border border-slate-400 bg-sky-300 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
+                        Gender
                       </th>
                       <th className="border border-slate-400 bg-yellow-300 px-2 py-3 text-center text-xs font-extrabold uppercase leading-tight tracking-[0.02em] text-slate-950">
                         Solo<br />Parent
@@ -195,9 +186,6 @@ export function ReportsPage() {
                       </th>
                       <th className="border border-slate-400 bg-slate-500 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
                         PWD
-                      </th>
-                      <th className="border border-slate-400 bg-stone-50 px-3 py-3 text-center text-xs font-extrabold uppercase tracking-[0.08em]">
-                        Signature
                       </th>
                     </tr>
                   </thead>
@@ -213,22 +201,18 @@ export function ReportsPage() {
                         <td className="h-10 border border-slate-400 px-3 py-2 text-xs text-muted-foreground">
                           {formatAddress(application)}
                         </td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center font-bold">
-                          {isMale(application.sex) ? "1" : ""}
-                        </td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center font-bold">
-                          {isFemale(application.sex) ? "1" : ""}
+                        <td className="h-10 border border-slate-400 px-2 py-2 text-center text-xs font-semibold capitalize">
+                          {formatGender(application.sex)}
                         </td>
                         <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
                         <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
                         <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
                         <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
-                        <td className="h-10 border border-slate-400 px-3 py-2"></td>
                       </tr>
                     ))}
                     {Array.from({ length: blankRows }, (_, index) => (
                       <tr key={`blank-${index}`}>
-                        {Array.from({ length: 10 }, (_, cellIndex) => (
+                        {Array.from({ length: 8 }, (_, cellIndex) => (
                           <td
                             key={cellIndex}
                             className="h-10 border border-slate-400 px-3 py-2"
