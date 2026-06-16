@@ -168,6 +168,9 @@ export function AdminDashboardPage() {
   const forCorrection = scopedApplications.filter(
     (application) => application.status === "For correction",
   ).length;
+  const forInterview = scopedApplications.filter(
+    (application) => application.status === "For interview",
+  ).length;
 
   const urgentCount = queue.filter((i) => i.priority === "Urgent").length;
   const highCount = queue.filter((i) => i.priority === "High").length;
@@ -184,7 +187,7 @@ export function AdminDashboardPage() {
     { label: "Approved", value: approved, color: CHART_COLORS.approved },
     { label: "Correction", value: forCorrection, color: CHART_COLORS.correction },
     {
-      label: "Other",
+      label: "For Interview",
       value: Math.max(totalApplications - pendingVerification - approved - forCorrection, 0),
       color: CHART_COLORS.other,
     },
@@ -293,12 +296,6 @@ export function AdminDashboardPage() {
       {/* KPI row */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Total applications"
-          value={fmt(totalApplications)}
-          sub={dateFrom || dateTo ? "Within selected date range" : "All submitted cases"}
-          icon={<ClipboardCheck className="h-4 w-4" />}
-        />
-        <KpiCard
           label="Pending"
           value={fmt(pendingVerification)}
           sub={`${reviewPressure}% of total`}
@@ -306,18 +303,25 @@ export function AdminDashboardPage() {
           highlight="amber"
         />
         <KpiCard
-          label="Approved"
-          value={fmt(approved)}
-          sub={`${completionRate}% completion rate`}
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          highlight="green"
-        />
-        <KpiCard
           label="For correction"
           value={fmt(forCorrection)}
           sub={`${fmt(activeCount)} queue items active`}
           icon={<AlertTriangle className="h-4 w-4" />}
           highlight="red"
+        />
+        <KpiCard
+          label="For interview"
+          value={fmt(forInterview)}
+          sub={`${fmt(forInterview)} scheduled`}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          highlight="red"
+        />
+        <KpiCard
+          label="Approved"
+          value={fmt(approved)}
+          sub={`${completionRate}% completion rate`}
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          highlight="green"
         />
       </div>
 
@@ -396,60 +400,7 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Queue row */}
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Queue composition</CardTitle>
-            <CardDescription>Active queue split by urgency level.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {dashboardQuery.isLoading ? (
-              <ChartSkeleton height={180} />
-            ) : priorityBreakdown.length > 0 ? (
-              <div className="flex items-center gap-6">
-                <div className="h-[160px] w-[160px] shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={priorityBreakdown}
-                        dataKey="total"
-                        nameKey="label"
-                        innerRadius={44}
-                        outerRadius={72}
-                        paddingAngle={2}
-                      >
-                        {priorityBreakdown.map((i) => (
-                          <Cell key={i.label} fill={i.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex-1 space-y-2">
-                  {priorityBreakdown.map((i) => (
-                    <div key={i.label} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: i.color }} />
-                        {i.label}
-                      </span>
-                      <span className="font-medium">{i.total}</span>
-                    </div>
-                  ))}
-                  <div className="border-t" />
-                  <div className="grid grid-cols-3 gap-2 pt-1">
-                    <StatTile label="Total" value={String(queue.length)} />
-                    <StatTile label="Urgent" value={String(urgentCount)} />
-                    <StatTile label="Active" value={String(activeCount)} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <Empty message="No queue items yet." />
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Queue by status</CardTitle>

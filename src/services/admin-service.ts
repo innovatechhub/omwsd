@@ -660,7 +660,7 @@ export async function getAdminResidents() {
       email:
         typeof profile.email === "string" && profile.email.trim() ? profile.email : "-",
       status: resident?.is_verified ? "Verified" : "Pending verification",
-      barangay: String(barangay?.name ?? "—"),
+      barangay: String(barangay?.name ?? profile.barangay ?? "—"),
       municipality: String(municipality?.name ?? profile.municipality ?? "-"),
       addressLine:
         typeof resident?.address_line === "string" && resident.address_line.trim()
