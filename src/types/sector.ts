@@ -1,6 +1,7 @@
 export type SectorType = "pwd" | "senior_citizen" | "solo_parent";
 
 export type SectorRegistrationStatus =
+  | "pending_review"
   | "pending_appointment"
   | "appointment_booked"
   | "document_uploaded"

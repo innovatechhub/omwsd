@@ -1353,6 +1353,41 @@ export async function reviewSectorRegistration(
   }
 }
 
+export async function approveSectorRegistration(registrationId: string): Promise<void> {
+  assertSupabaseConfigured();
+  const actorId = await getCurrentUserId();
+
+  const { data: regData, error: regFetchError } = await supabase
+    .from("sector_registrations")
+    .select("profile_id, sector_type")
+    .eq("id", registrationId)
+    .single();
+
+  if (regFetchError) throw regFetchError;
+
+  const reg = regData as Record<string, unknown>;
+  const profileId = String(reg.profile_id ?? "");
+  const sectorType = String(reg.sector_type ?? "") as SectorType;
+
+  const { error } = await supabase
+    .from("sector_registrations")
+    .update({ status: "pending_appointment", reviewed_by: actorId, reviewed_at: new Date().toISOString() })
+    .eq("id", registrationId);
+
+  if (error) throw error;
+
+  await supabase.from("notifications").insert({
+    recipient_id: profileId,
+    title: `Your ${formatSectorTypeLabel(sectorType)} registration has been approved`,
+    message: `OMSWD approved your registration. You may now book an appointment.`,
+    category: "sector_verification",
+    link_url: `/resident/sectors/${sectorType}`,
+    is_read: false,
+  });
+
+  void writeAuditLog("sector_registration.approved", "sector_registration", registrationId, { actor: actorId });
+}
+
 export async function getAdminAppointments(date?: string): Promise<AdminAppointmentRecord[]> {
   assertSupabaseConfigured();
 

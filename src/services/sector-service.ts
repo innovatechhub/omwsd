@@ -38,6 +38,7 @@ export function formatSectorTypeLabel(type: SectorType): string {
 
 export function formatSectorStatusLabel(status: SectorRegistrationStatus): string {
   switch (status) {
+    case "pending_review":      return "Pending approval";
     case "pending_appointment": return "Pending appointment";
     case "appointment_booked":  return "Appointment booked";
     case "document_uploaded":   return "Document submitted";
@@ -187,7 +188,7 @@ export async function createSectorRegistration(input: {
       sector_type: input.sectorType,
       sector_id_type: input.sectorIdType,
       sector_id_number: input.sectorIdNumber ?? null,
-      status: "pending_appointment",
+      status: "pending_review",
     })
     .select("id")
     .single();
@@ -209,7 +210,7 @@ export async function resubmitSectorRegistration(input: {
     .update({
       sector_id_type: input.sectorIdType,
       sector_id_number: input.sectorIdNumber ?? null,
-      status: "pending_appointment",
+      status: "pending_review",
       document_file_path: null,
       document_file_name: null,
       document_bucket: null,

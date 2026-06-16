@@ -40,31 +40,32 @@ const SECTOR_META: Record<SectorType, {
 }> = {
   pwd: {
     label: "Person with Disability (PWD)",
-    idTypes: ["PWD ID", "Medical Certificate", "Disability Assessment Report", "Other"],
-    docInstructions: "Upload a clear photo or scan of your PWD ID, medical certificate, or disability assessment report. File must be JPG, PNG, or PDF under 5 MB.",
+    idTypes: ["PWD ID", "Other"],
+    docInstructions: "Upload a clear photo or scan of your PWD ID. File must be JPG, PNG, or PDF under 5 MB.",
   },
   senior_citizen: {
     label: "Senior Citizen",
-    idTypes: ["Senior Citizen ID", "Birth Certificate", "Government ID with birthdate", "Other"],
-    docInstructions: "Upload a clear photo or scan of proof of age (birth certificate, existing senior ID, or any government ID showing your birthdate). File must be JPG, PNG, or PDF under 5 MB.",
+    idTypes: ["Senior Citizen ID", "Other"],
+    docInstructions: "Upload a clear photo or scan of your Senior Citizen ID. File must be JPG, PNG, or PDF under 5 MB.",
   },
   solo_parent: {
     label: "Solo Parent",
-    idTypes: ["Solo Parent ID", "Birth Certificate of child/ren", "Court order / legal document", "Other"],
-    docInstructions: "Upload your existing Solo Parent ID or any supporting document showing you qualify under RA 8972. File must be JPG, PNG, or PDF under 5 MB.",
+    idTypes: ["Solo Parent ID", "Other"],
+    docInstructions: "Upload a clear photo or scan of your Solo Parent ID. File must be JPG, PNG, or PDF under 5 MB.",
   },
 };
 
-const STEPS = ["Registration info", "Book appointment", "Upload document", "Verification"] as const;
+const STEPS = ["Registration info", "Admin approval", "Book appointment", "Upload document", "Verification"] as const;
 
 function stepIndex(status: string): number {
   switch (status) {
-    case "pending_appointment": return 0;
-    case "appointment_booked":  return 1;
+    case "pending_review":      return 0;
+    case "pending_appointment": return 1;
+    case "appointment_booked":  return 2;
     case "document_uploaded":
-    case "under_review":        return 2;
+    case "under_review":        return 3;
     case "verified":
-    case "rejected":            return 3;
+    case "rejected":            return 4;
     default:                    return 0;
   }
 }
@@ -422,10 +423,34 @@ export function ResidentSectorRegistrationPage() {
         </div>
       )}
 
+      {reg?.status === "pending_review" && (
+        <div className="portal-card p-6 space-y-4">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+            <div>
+              <p className="text-sm font-bold text-amber-800">Waiting for admin approval</p>
+              <p className="text-sm text-amber-700">
+                Your registration has been submitted and is being reviewed by OMSWD staff. You will be notified once it is approved and you can proceed to book an appointment.
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">ID / Document type</p>
+            <p className="mt-0.5 text-sm text-[var(--portal-ink)]">{reg.sectorIdType ?? "—"}</p>
+          </div>
+          {reg.sectorIdNumber && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">ID number</p>
+              <p className="mt-0.5 text-sm text-[var(--portal-ink)]">{reg.sectorIdNumber}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {reg?.status === "pending_appointment" && (
         <div className="portal-card p-6 space-y-5">
           <div>
-            <h2 className="text-base font-bold text-[var(--portal-ink)]">Step 2 — Book your appointment</h2>
+            <h2 className="text-base font-bold text-[var(--portal-ink)]">Step 3 — Book your appointment</h2>
             <p className="mt-1 text-sm text-[var(--portal-muted)]">Select a date and time that works for you. Bring your {reg.sectorIdType} to the OMSWD office.</p>
           </div>
 
@@ -467,7 +492,7 @@ export function ResidentSectorRegistrationPage() {
           </div>
 
           <div>
-            <h2 className="text-base font-bold text-[var(--portal-ink)]">Step 3 — Upload your document</h2>
+            <h2 className="text-base font-bold text-[var(--portal-ink)]">Step 4 — Upload your document</h2>
             <p className="mt-1 text-sm text-[var(--portal-muted)]">{meta.docInstructions}</p>
           </div>
 

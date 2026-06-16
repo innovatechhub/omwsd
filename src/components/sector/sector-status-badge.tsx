@@ -6,6 +6,7 @@ interface Props {
 }
 
 const variantMap: Record<SectorRegistrationStatus, string> = {
+  pending_review:      "bg-amber-100 text-amber-700",
   pending_appointment: "bg-slate-100 text-slate-600",
   appointment_booked:  "bg-blue-100 text-blue-700",
   document_uploaded:   "bg-yellow-100 text-yellow-700",

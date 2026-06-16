@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
+  approveSectorRegistration,
   createAppointmentSlot,
   getAdminAppointmentSlots,
   getAdminAppointments,
@@ -149,6 +150,7 @@ export function AdminSectorsPage() {
               className="rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)]"
             >
               <option value="">All statuses</option>
+              <option value="pending_review">Pending approval</option>
               <option value="pending_appointment">Pending appointment</option>
               <option value="appointment_booked">Appointment booked</option>
               <option value="document_uploaded">Document submitted</option>
@@ -533,6 +535,20 @@ function ReviewModal({ reg, onClose, onDone }: {
   const [viewingDoc, setViewingDoc] = useState(false);
 
   const isLocked = reg.status === "verified";
+  const isPendingReview = reg.status === "pending_review";
+
+  async function handleApprove() {
+    setSaving(true);
+    try {
+      await approveSectorRegistration(reg.id);
+      toast.success("Registration approved. Resident can now book an appointment.");
+      onDone();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to approve registration.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleAction(action: "verify" | "reject") {
     setSaving(true);
@@ -635,7 +651,28 @@ function ReviewModal({ reg, onClose, onDone }: {
           <Button variant="outline" onClick={onClose} className="border-[var(--portal-outline)]">
             Close
           </Button>
-          {!isLocked && reg.documentFilePath && (
+          {isPendingReview && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => void handleAction("reject")}
+                disabled={saving}
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                Reject
+              </Button>
+              <Button
+                onClick={() => void handleApprove()}
+                disabled={saving}
+                className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
+              >
+                {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Approve
+              </Button>
+            </>
+          )}
+          {!isLocked && !isPendingReview && reg.documentFilePath && (
             <>
               <Button
                 variant="outline"
