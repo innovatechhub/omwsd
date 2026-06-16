@@ -420,7 +420,7 @@ export async function createResidentAssistanceRequest(
       .maybeSingle(),
     supabase
       .from("residents")
-      .select("id, birth_date, sex, civil_status, address_line, household_size, monthly_income")
+      .select("id, birth_date, sex, civil_status, address_line, household_size, monthly_income, government_id_type, government_id_number")
       .eq("profile_id", user.id)
       .maybeSingle(),
   ]);
@@ -474,6 +474,8 @@ export async function createResidentAssistanceRequest(
       applicant_municipality: typeof profile.municipality === "string" ? profile.municipality : "Pandan",
       household_size: householdSize,
       monthly_income: monthlyIncome,
+      government_id_type: typeof resident.government_id_type === "string" ? resident.government_id_type : null,
+      government_id_number: typeof resident.government_id_number === "string" ? resident.government_id_number : null,
       consent_accepted: input.consentAccepted,
       relationship_to_beneficiary: input.relationshipToBeneficiary || null,
       educational_attainment: input.educationalAttainment || null,
@@ -530,6 +532,34 @@ export async function createResidentAssistanceRequest(
   if (statusError) throw statusError;
 
   return { applicationId, referenceNumber };
+}
+
+export async function cancelResidentApplication(applicationId: string): Promise<void> {
+  assertSupabaseConfigured();
+  const user = await requireAuthenticatedUser();
+
+  const { error } = await supabase
+    .from("applications")
+    .update({ status: "cancelled" })
+    .eq("id", applicationId)
+    .eq("applicant_profile_id", user.id)
+    .in("status", ["pending_verification", "under_review", "for_correction"]);
+
+  if (error) throw error;
+}
+
+export async function deleteResidentApplication(applicationId: string): Promise<void> {
+  assertSupabaseConfigured();
+  const user = await requireAuthenticatedUser();
+
+  const { error } = await supabase
+    .from("applications")
+    .delete()
+    .eq("id", applicationId)
+    .eq("applicant_profile_id", user.id)
+    .in("status", ["pending_verification", "cancelled"]);
+
+  if (error) throw error;
 }
 
 function parseNullableNumber(value: unknown): number | null {

@@ -197,7 +197,14 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
       setCurrentStep(0);
       onSuccess(result);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to submit your request.");
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as Record<string, unknown>).message)
+            : "Unable to submit your request.";
+      toast.error(message);
+      console.error("Submission error:", error);
     }
   }
 

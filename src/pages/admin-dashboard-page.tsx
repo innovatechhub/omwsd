@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
-  ClipboardCheck,
   Clock,
   LoaderCircle,
   TimerReset,
@@ -172,9 +171,6 @@ export function AdminDashboardPage() {
     (application) => application.status === "For interview",
   ).length;
 
-  const urgentCount = queue.filter((i) => i.priority === "Urgent").length;
-  const highCount = queue.filter((i) => i.priority === "High").length;
-  const normalCount = queue.filter((i) => i.priority === "Normal").length;
   const activeCount = queue.filter((i) => i.status !== "Approved").length;
 
   const completionRate =
@@ -192,12 +188,6 @@ export function AdminDashboardPage() {
       color: CHART_COLORS.other,
     },
   ].filter((i) => i.value > 0);
-
-  const priorityBreakdown = [
-    { label: "Urgent", total: urgentCount, color: CHART_COLORS.urgent },
-    { label: "High", total: highCount, color: CHART_COLORS.high },
-    { label: "Normal", total: normalCount, color: CHART_COLORS.normal },
-  ].filter((i) => i.total > 0);
 
   const statusPalette = ["#14115e", "#2563eb", "#f97316", "#dc2626", "#16a34a", "#64748b"];
   const queueStatusBreakdown = Array.from(
@@ -544,14 +534,6 @@ function QueueRow({ item }: { item: AdminQueueItem }) {
   );
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border bg-muted/30 px-2 py-2 text-center">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold">{value}</p>
-    </div>
-  );
-}
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
