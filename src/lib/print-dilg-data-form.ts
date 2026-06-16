@@ -31,23 +31,28 @@ function formatAddress(application: AdminApplicationRecord) {
     .join(", ");
 }
 
-function dataRows(applications: AdminApplicationRecord[]) {
+function check(sectors: Set<string> | undefined, type: string) {
+  return sectors?.has(type) ? "&#10003;" : "";
+}
+
+function dataRows(applications: AdminApplicationRecord[], sectorMap: Map<string, Set<string>>) {
   return applications
-    .map(
-      (application) => `
+    .map((application) => {
+      const sectors = application.profileId ? sectorMap.get(application.profileId) : undefined;
+      return `
         <tr>
           <td>${escapeHtml(formatFormDate(application.submittedAtRaw))}</td>
           <td>${escapeHtml(application.resident)}</td>
           <td>${escapeHtml(formatAddress(application))}</td>
           <td class="center capitalize">${escapeHtml(formatGender(application.sex))}</td>
-          <td class="category-cell"></td>
-          <td class="category-cell"></td>
-          <td class="category-cell"></td>
-          <td class="category-cell"></td>
+          <td class="category-cell center checkmark">${check(sectors, "solo_parent")}</td>
+          <td class="category-cell center checkmark">${check(sectors, "4ps")}</td>
+          <td class="category-cell center checkmark">${check(sectors, "senior_citizen")}</td>
+          <td class="category-cell center checkmark">${check(sectors, "pwd")}</td>
           <td></td>
         </tr>
-      `,
-    )
+      `;
+    })
     .join("");
 }
 
@@ -70,7 +75,10 @@ function blankRows(count: number) {
   ).join("");
 }
 
-export function printDilgDataForm(applications: AdminApplicationRecord[] = []): void {
+export function printDilgDataForm(
+  applications: AdminApplicationRecord[] = [],
+  sectorMap: Map<string, Set<string>> = new Map(),
+): void {
   const today = new Intl.DateTimeFormat("en-PH", {
     year: "numeric",
     month: "long",
@@ -195,6 +203,7 @@ export function printDilgDataForm(applications: AdminApplicationRecord[] = []): 
     .center { text-align: center; }
     .capitalize { text-transform: capitalize; }
     .category-cell { background: rgba(255, 255, 255, 0.18); }
+    .checkmark { font-size: 13px; font-weight: 900; color: #1a2a6d; }
     .footer-note {
       color: #6b7280;
       font-size: 10px;
@@ -236,7 +245,7 @@ export function printDilgDataForm(applications: AdminApplicationRecord[] = []): 
         </tr>
       </thead>
       <tbody>
-        ${dataRows(applications)}
+        ${dataRows(applications, sectorMap)}
         ${blankRows(emptyRowCount)}
       </tbody>
     </table>

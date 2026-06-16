@@ -320,7 +320,7 @@ export async function getAdminApplications() {
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id, reference_number, applicant_full_name, applicant_barangay, applicant_municipality, urgency, submitted_at, admin_remarks, request_reason, status, birth_date, sex, civil_status, contact_number, address_line, household_size, monthly_income, educational_attainment, occupation, relationship_to_beneficiary, family_composition, assistance_types(name)",
+      "id, reference_number, applicant_full_name, applicant_barangay, applicant_municipality, applicant_profile_id, urgency, submitted_at, admin_remarks, request_reason, status, birth_date, sex, civil_status, contact_number, address_line, household_size, monthly_income, educational_attainment, occupation, relationship_to_beneficiary, family_composition, assistance_types(name)",
     )
     .order("submitted_at", { ascending: false });
 
@@ -355,8 +355,35 @@ export async function getAdminApplications() {
       occupation: typeof item.occupation === "string" ? item.occupation : null,
       relationshipToBeneficiary: typeof item.relationship_to_beneficiary === "string" ? item.relationship_to_beneficiary : null,
       familyComposition: mapFamilyComposition(item.family_composition),
+      profileId: typeof item.applicant_profile_id === "string" ? item.applicant_profile_id : null,
     } satisfies AdminApplicationRecord;
   });
+}
+
+export async function getSectorRegistrationsByProfileIds(
+  profileIds: string[],
+): Promise<Map<string, Set<string>>> {
+  if (profileIds.length === 0) return new Map();
+
+  assertSupabaseConfigured();
+
+  const { data, error } = await supabase
+    .from("sector_registrations")
+    .select("profile_id, sector_type")
+    .in("profile_id", profileIds)
+    .eq("status", "verified");
+
+  if (error) throw error;
+
+  const result = new Map<string, Set<string>>();
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const pid = typeof row.profile_id === "string" ? row.profile_id : null;
+    const type = typeof row.sector_type === "string" ? row.sector_type : null;
+    if (!pid || !type) continue;
+    if (!result.has(pid)) result.set(pid, new Set());
+    result.get(pid)!.add(type);
+  }
+  return result;
 }
 
 export async function updateAdminApplicationStatus(

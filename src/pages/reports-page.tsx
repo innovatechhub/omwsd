@@ -6,6 +6,7 @@ import {
   getAdminApplications,
   getAdminDashboardMetrics,
   getMonthlyApplicationVolume,
+  getSectorRegistrationsByProfileIds,
 } from "@/services/admin-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,9 @@ function formatGender(value: string | null) {
 
 export function ReportsPage() {
   const [period, setPeriod] = useState("6");
+  const [barangayFilter, setBarangayFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const reportsQuery = useQuery({
     queryKey: ["admin", "reports"],
@@ -57,7 +61,11 @@ export function ReportsPage() {
         getAdminApplications(),
         getAdminDashboardMetrics(),
       ]);
-      return { monthlyVolume, applications, metrics };
+      const profileIds = applications
+        .map((a) => a.profileId)
+        .filter((id): id is string => Boolean(id));
+      const sectorMap = await getSectorRegistrationsByProfileIds(profileIds);
+      return { monthlyVolume, applications, metrics, sectorMap };
     },
   });
 
@@ -73,15 +81,32 @@ export function ReportsPage() {
     [filteredSeries],
   );
 
-  const formRows = useMemo(
-    () =>
-      (reportsQuery.data?.applications ?? [])
-        .filter((application) => selectedMonthLabels.has(formatMonthLabel(application.submittedAtRaw)))
-        .sort((left, right) =>
-          (left.submittedAtRaw ?? "").localeCompare(right.submittedAtRaw ?? ""),
-        ),
-    [reportsQuery.data?.applications, selectedMonthLabels],
-  );
+  const barangayOptions = useMemo(() => {
+    const all = (reportsQuery.data?.applications ?? [])
+      .map((a) => a.barangay)
+      .filter(Boolean);
+    return Array.from(new Set(all)).sort();
+  }, [reportsQuery.data?.applications]);
+
+  const formRows = useMemo(() => {
+    const dateFromMs = dateFrom ? new Date(dateFrom).setHours(0, 0, 0, 0) : null;
+    const dateToMs = dateTo ? new Date(dateTo).setHours(23, 59, 59, 999) : null;
+
+    return (reportsQuery.data?.applications ?? [])
+      .filter((application) => {
+        if (!selectedMonthLabels.has(formatMonthLabel(application.submittedAtRaw))) return false;
+        if (barangayFilter && application.barangay !== barangayFilter) return false;
+        if (application.submittedAtRaw) {
+          const submittedMs = new Date(application.submittedAtRaw).getTime();
+          if (dateFromMs !== null && submittedMs < dateFromMs) return false;
+          if (dateToMs !== null && submittedMs > dateToMs) return false;
+        }
+        return true;
+      })
+      .sort((left, right) =>
+        (left.submittedAtRaw ?? "").localeCompare(right.submittedAtRaw ?? ""),
+      );
+  }, [reportsQuery.data?.applications, selectedMonthLabels, barangayFilter, dateFrom, dateTo]);
 
   const totals = useMemo(() => {
     const totalApplications = filteredSeries.reduce((sum, item) => sum + item.applications, 0);
@@ -93,6 +118,7 @@ export function ReportsPage() {
   }, [filteredSeries]);
 
   const blankRows = Math.max(12 - formRows.length, 0);
+  const sectorMap = reportsQuery.data?.sectorMap ?? new Map<string, Set<string>>();
   const metrics = reportsQuery.data?.metrics;
   const isLoading = reportsQuery.isLoading;
   const isError = reportsQuery.isError;
@@ -110,27 +136,49 @@ export function ReportsPage() {
             <option value="6">Last 6 months</option>
             <option value="12">Last 12 months</option>
           </Select>
-          <Button variant="secondary" onClick={() => printDilgDataForm(formRows)}>
+          <Button variant="secondary" onClick={() => printDilgDataForm(formRows, sectorMap)}>
             <Printer className="h-4 w-4" />
             Print data form
           </Button>
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: "Period volume", value: String(totals.totalApplications) },
-          { label: "Avg per month", value: String(totals.averagePerMonth) },
-          { label: "Peak month", value: String(totals.peak) },
-          { label: "Pending", value: String(metrics?.pendingVerification ?? 0) },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border bg-card px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {stat.label}
-            </p>
-            <p className="mt-1 text-2xl font-bold">{stat.value}</p>
-          </div>
-        ))}
+      <section className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Barangay</label>
+          <Select value={barangayFilter} onChange={(e) => setBarangayFilter(e.target.value)} className="min-w-[160px]">
+            <option value="">All barangays</option>
+            {barangayOptions.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Date from</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Date to</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        {(barangayFilter || dateFrom || dateTo) && (
+          <button
+            onClick={() => { setBarangayFilter(""); setDateFrom(""); setDateTo(""); }}
+            className="h-9 rounded-md px-3 text-sm text-muted-foreground underline-offset-2 hover:underline"
+          >
+            Clear filters
+          </button>
+        )}
       </section>
 
       <section>
@@ -138,7 +186,12 @@ export function ReportsPage() {
           <CardHeader>
             <CardTitle>AICS data form</CardTitle>
             <CardDescription>
-              Same table layout as the printable AICS data form for the last {period} months.
+              Same table layout as the printable AICS data form for the last {period} months
+              {barangayFilter ? ` · ${barangayFilter}` : ""}
+              {dateFrom || dateTo
+                ? ` · ${dateFrom || "…"} → ${dateTo || "…"}`
+                : ""}
+              .
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -190,26 +243,39 @@ export function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {formRows.map((application) => (
-                      <tr key={application.id} className="hover:bg-muted/20">
-                        <td className="h-10 border border-slate-400 px-3 py-2 text-xs font-medium">
-                          {formatFormDate(application.submittedAtRaw)}
-                        </td>
-                        <td className="h-10 border border-slate-400 px-3 py-2 font-medium">
-                          {application.resident}
-                        </td>
-                        <td className="h-10 border border-slate-400 px-3 py-2 text-xs text-muted-foreground">
-                          {formatAddress(application)}
-                        </td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center text-xs font-semibold capitalize">
-                          {formatGender(application.sex)}
-                        </td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
-                        <td className="h-10 border border-slate-400 px-2 py-2 text-center"></td>
-                      </tr>
-                    ))}
+                    {formRows.map((application) => {
+                      const sectors = application.profileId
+                        ? sectorMap.get(application.profileId)
+                        : undefined;
+                      return (
+                        <tr key={application.id} className="hover:bg-muted/20">
+                          <td className="h-10 border border-slate-400 px-3 py-2 text-xs font-medium">
+                            {formatFormDate(application.submittedAtRaw)}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-3 py-2 font-medium">
+                            {application.resident}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-3 py-2 text-xs text-muted-foreground">
+                            {formatAddress(application)}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-2 py-2 text-center text-xs font-semibold capitalize">
+                            {formatGender(application.sex)}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
+                            {sectors?.has("solo_parent") ? "✓" : ""}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
+                            {sectors?.has("4ps") ? "✓" : ""}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
+                            {sectors?.has("senior_citizen") ? "✓" : ""}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
+                            {sectors?.has("pwd") ? "✓" : ""}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {Array.from({ length: blankRows }, (_, index) => (
                       <tr key={`blank-${index}`}>
                         {Array.from({ length: 8 }, (_, cellIndex) => (

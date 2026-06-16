@@ -24,6 +24,7 @@ export interface AdminApplicationRecord {
   occupation: string | null;
   relationshipToBeneficiary: string | null;
   familyComposition: FamilyCompositionMember[];
+  profileId: string | null;
 }
 
 export interface AdminProgramRequirementRecord {
