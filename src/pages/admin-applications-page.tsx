@@ -809,7 +809,7 @@ export function AdminApplicationsPage() {
                               {req.documents.length} file{req.documents.length !== 1 ? "s" : ""} submitted
                             </p>
                           </div>
-                          {!isLocked && req.isActionable && (
+                          {!isLocked && req.isActionable && req.status !== "approved" && (
                             <div className="flex shrink-0 flex-wrap gap-2">
                               <Button
                                 type="button"
