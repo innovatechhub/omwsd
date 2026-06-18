@@ -47,6 +47,14 @@ function formatGender(value: string | null) {
   return value ? value.trim().replace(/_/g, " ") : "";
 }
 
+function isMedical(application: AdminApplicationRecord) {
+  return application.assistance.toLowerCase().includes("medical");
+}
+
+function isBurial(application: AdminApplicationRecord) {
+  return application.assistance.toLowerCase().includes("burial");
+}
+
 export function ReportsPage() {
   const [period, setPeriod] = useState("6");
   const [barangayFilter, setBarangayFilter] = useState("");
@@ -196,12 +204,13 @@ export function ReportsPage() {
                 <table className="w-full min-w-[920px] table-fixed border-collapse text-sm">
                   <colgroup>
                     <col className="w-[10%]" />
+                    <col className="w-[23%]" />
                     <col className="w-[25%]" />
-                    <col className="w-[29%]" />
-                    <col className="w-[10%]" />
+                    <col className="w-[9%]" />
                     <col className="w-[8%]" />
-                    <col className="w-[6%]" />
+                    <col className="w-[8%]" />
                     <col className="w-[7%]" />
+                    <col className="w-[5%]" />
                     <col className="w-[5%]" />
                   </colgroup>
                   <thead>
@@ -221,8 +230,11 @@ export function ReportsPage() {
                       <th className="border border-slate-400 bg-yellow-300 px-2 py-3 text-center text-xs font-extrabold uppercase leading-tight tracking-[0.02em] text-slate-950">
                         Solo<br />Parent
                       </th>
-                      <th className="border border-slate-400 bg-green-700 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
-                        4Ps
+                      <th className="border border-slate-400 bg-green-700 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-white">
+                        Medical
+                      </th>
+                      <th className="border border-slate-400 bg-amber-600 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-white">
+                        Burial
                       </th>
                       <th className="border border-slate-400 bg-rose-500 px-2 py-3 text-center text-xs font-extrabold uppercase tracking-[0.04em] text-slate-950">
                         Senior
@@ -255,7 +267,10 @@ export function ReportsPage() {
                             {sectors?.has("solo_parent") ? "✓" : ""}
                           </td>
                           <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
-                            {sectors?.has("4ps") ? "✓" : ""}
+                            {isMedical(application) ? "✓" : ""}
+                          </td>
+                          <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
+                            {isBurial(application) ? "✓" : ""}
                           </td>
                           <td className="h-10 border border-slate-400 px-2 py-2 text-center text-sm font-bold text-slate-700">
                             {sectors?.has("senior_citizen") ? "✓" : ""}
@@ -268,7 +283,7 @@ export function ReportsPage() {
                     })}
                     {Array.from({ length: blankRows }, (_, index) => (
                       <tr key={`blank-${index}`}>
-                        {Array.from({ length: 8 }, (_, cellIndex) => (
+                        {Array.from({ length: 9 }, (_, cellIndex) => (
                           <td
                             key={cellIndex}
                             className="h-10 border border-slate-400 px-3 py-2"

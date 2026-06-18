@@ -35,6 +35,10 @@ function check(sectors: Set<string> | undefined, type: string) {
   return sectors?.has(type) ? "&#10003;" : "";
 }
 
+function checkAssistance(application: AdminApplicationRecord, keyword: string) {
+  return application.assistance.toLowerCase().includes(keyword) ? "&#10003;" : "";
+}
+
 function dataRows(applications: AdminApplicationRecord[], sectorMap: Map<string, Set<string>>) {
   return applications
     .map((application) => {
@@ -46,7 +50,8 @@ function dataRows(applications: AdminApplicationRecord[], sectorMap: Map<string,
           <td>${escapeHtml(formatAddress(application))}</td>
           <td class="center capitalize">${escapeHtml(formatGender(application.sex))}</td>
           <td class="category-cell center checkmark">${check(sectors, "solo_parent")}</td>
-          <td class="category-cell center checkmark">${check(sectors, "4ps")}</td>
+          <td class="category-cell center checkmark">${checkAssistance(application, "medical")}</td>
+          <td class="category-cell center checkmark">${checkAssistance(application, "burial")}</td>
           <td class="category-cell center checkmark">${check(sectors, "senior_citizen")}</td>
           <td class="category-cell center checkmark">${check(sectors, "pwd")}</td>
           <td></td>
@@ -65,6 +70,7 @@ function blankRows(count: number) {
         <td></td>
         <td></td>
         <td></td>
+        <td class="category-cell"></td>
         <td class="category-cell"></td>
         <td class="category-cell"></td>
         <td class="category-cell"></td>
@@ -190,14 +196,15 @@ export function printDilgDataForm(
       overflow-wrap: anywhere;
     }
     .date-col { width: 8%; }
-    .name-col { width: 22%; }
-    .address-col { width: 25%; }
+    .name-col { width: 20%; }
+    .address-col { width: 21%; }
     .gender-col { width: 8%; }
     .category-col { width: 6%; }
     .signature-col { width: 13%; }
     .gender { background: #40a9d8; color: #183141; }
     .solo { background: #f3d549; color: #3f3510; }
-    .fourps { background: #617d4d; color: #17210f; }
+    .medical { background: #2f7d4e; color: #ffffff; }
+    .burial { background: #b45309; color: #ffffff; }
     .senior { background: #e85d6a; color: #3a121a; }
     .pwd { background: #5f6371; color: #111827; }
     .center { text-align: center; }
@@ -238,7 +245,8 @@ export function printDilgDataForm(
           <th class="address-col">Address</th>
           <th class="gender-col gender">Gender</th>
           <th class="category-col solo">Solo<br />Parent</th>
-          <th class="category-col fourps">4Ps</th>
+          <th class="category-col medical">Medical</th>
+          <th class="category-col burial">Burial</th>
           <th class="category-col senior">Senior</th>
           <th class="category-col pwd">PWD</th>
           <th class="signature-col">Signature</th>
