@@ -123,6 +123,7 @@ function mapCaseRequirement(
     requirementId: String(row.requirement_id ?? ""),
     name: String(requirement?.name ?? "Requirement"),
     description: typeof requirement?.description === "string" ? requirement.description : null,
+    isRequired: requirement?.is_required !== false,
     sortOrder:
       typeof requirement?.sort_order === "number"
         ? requirement.sort_order
@@ -472,7 +473,7 @@ export async function getAdminApplicationCaseDetails(
     supabase
       .from("application_requirements")
       .select(
-        "id, requirement_id, status, remarks, reviewed_at, assistance_requirements(name, description, sort_order)",
+        "id, requirement_id, status, remarks, reviewed_at, assistance_requirements(name, description, sort_order, is_required)",
       )
       .eq("application_id", applicationId),
     supabase
@@ -498,7 +499,7 @@ export async function getAdminApplicationCaseDetails(
     const { data: refreshedRequirementRows, error: refreshRequirementError } = await supabase
       .from("application_requirements")
       .select(
-        "id, requirement_id, status, remarks, reviewed_at, assistance_requirements(name, description, sort_order)",
+        "id, requirement_id, status, remarks, reviewed_at, assistance_requirements(name, description, sort_order, is_required)",
       )
       .eq("application_id", applicationId);
 
@@ -542,6 +543,7 @@ export async function getAdminApplicationCaseDetails(
         name: "General supporting documents",
         description:
           "No requirement template is configured for this service yet. Uploaded files are listed here.",
+        isRequired: false,
         sortOrder: 0,
         status: "submitted",
         statusLabel: "Submitted",
@@ -1149,6 +1151,16 @@ export async function updateRequirementVerificationStatus(
   remarks?: string,
 ) {
   assertSupabaseConfigured();
+
+  if (status === "approved") {
+    const { count, error: documentError } = await supabase
+      .from("uploaded_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("application_requirement_id", requirementId)
+      .neq("status", "archived");
+    if (documentError) throw documentError;
+    if (!count) throw new Error("A requirement cannot be approved until its document is uploaded.");
+  }
 
   const { error } = await supabase
     .from("application_requirements")

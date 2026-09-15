@@ -96,7 +96,6 @@ export function AdminApplicationsPage() {
   const [fileViewerUrl, setFileViewerUrl] = useState<string | null>(null);
   const [fileViewerTitle, setFileViewerTitle] = useState<string>("File viewer");
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   const filteredApplications = useMemo(() => {
     return applications.filter((application) => {
@@ -153,10 +152,6 @@ export function AdminApplicationsPage() {
     }
   }, [selectedApplication]);
 
-  useEffect(() => {
-    setSelectedRows(new Set());
-  }, [activeStatus, searchTerm]);
-
   const totalPending = applications.filter(
     (application) => application.status === "Pending",
   ).length;
@@ -171,28 +166,6 @@ export function AdminApplicationsPage() {
   ).length;
   const activeStatusLabel =
     applicationStatusTabs.find((tab) => tab.status === activeStatus)?.label ?? activeStatus;
-
-  async function handleStatusUpdate(
-    application: AdminApplicationRecord,
-    status: AdminApplicationRecord["status"],
-    remarks?: string,
-  ) {
-    try {
-      setIsSaving(true);
-      setActiveReference(application.reference);
-      await updateAdminApplicationStatus(
-        application.id,
-        status,
-        remarks ?? application.remarks,
-      );
-      await applicationsQuery.refetch();
-      toast.success(`Application updated to ${status}.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to update application.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   async function handleSaveRemarks() {
     if (!selectedApplication) {
@@ -242,56 +215,12 @@ export function AdminApplicationsPage() {
     }
   }
 
-  async function handleBulkApprove() {
-    if (selectedRows.size === 0) {
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      const toApprove = applications.filter(
-        (app) => selectedRows.has(app.reference) && app.status !== "Approved",
-      );
-
-      await Promise.all(
-        toApprove.map((app) => updateAdminApplicationStatus(app.id, "Approved", app.remarks)),
-      );
-      await applicationsQuery.refetch();
-      setSelectedRows(new Set());
-      toast.success(`${toApprove.length} application(s) approved.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to bulk approve.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   function openCaseModal(reference: string) {
     setActiveReference(reference);
   }
 
   function closeCaseModal() {
     setActiveReference(null);
-  }
-
-  function toggleRow(reference: string) {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(reference)) {
-        next.delete(reference);
-      } else {
-        next.add(reference);
-      }
-      return next;
-    });
-  }
-
-  function toggleAllRows() {
-    if (selectedRows.size === filteredApplications.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(filteredApplications.map((app) => app.reference)));
-    }
   }
 
   async function handleViewDocument(document: AdminCaseDocumentRecord) {
@@ -307,9 +236,6 @@ export function AdminApplicationsPage() {
     }
   }
 
-
-  const allSelected =
-    filteredApplications.length > 0 && selectedRows.size === filteredApplications.length;
 
   return (
     <div className="space-y-6">
@@ -344,20 +270,9 @@ export function AdminApplicationsPage() {
             <div>
               <CardTitle>Application table</CardTitle>
               <CardDescription>
-                SLA badge shows days since submission. Select rows for bulk actions.
+                SLA badges show days since submission. Open a record to complete the required review.
               </CardDescription>
             </div>
-            {selectedRows.size > 0 && (
-              <Button
-                size="sm"
-                onClick={() => void handleBulkApprove()}
-                disabled={isSaving}
-                className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Approve {selectedRows.size} selected
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -451,14 +366,6 @@ export function AdminApplicationsPage() {
                 <Table>
                   <TableHeader>
                     <tr>
-                      <TableHead className="w-[40px]">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          onChange={toggleAllRows}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                      </TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Resident</TableHead>
                       <TableHead>Service</TableHead>
@@ -480,14 +387,6 @@ export function AdminApplicationsPage() {
                           className="cursor-pointer"
                           onClick={() => openCaseModal(application.reference)}
                         >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedRows.has(application.reference)}
-                              onChange={() => toggleRow(application.reference)}
-                              className="h-4 w-4 rounded border-gray-300"
-                            />
-                          </TableCell>
                           <TableCell>
                             <p className="font-medium text-[var(--portal-accent)]">{application.reference}</p>
                           </TableCell>
@@ -517,19 +416,6 @@ export function AdminApplicationsPage() {
                                   label: "Open review form",
                                   icon: <Eye className="h-4 w-4" />,
                                   onSelect: () => openCaseModal(application.reference),
-                                },
-                                {
-                                  label: "Quick approve",
-                                  icon: <CheckCircle2 className="h-4 w-4" />,
-                                  disabled:
-                                    isSaving ||
-                                    application.status === "Approved",
-                                  onSelect: () =>
-                                    void handleStatusUpdate(
-                                      application,
-                                      "Approved",
-                                      application.remarks,
-                                    ),
                                 },
                               ]}
                             />
@@ -784,73 +670,51 @@ export function AdminApplicationsPage() {
                     <LoaderCircle className="h-4 w-4 animate-spin" /> Loading requirements...
                   </div>
                 ) : caseDetailsQuery.data?.requirements.length ? (
-                  <div className="space-y-2">
-                    {caseDetailsQuery.data.requirements.map((req) => (
-                      <div
-                        key={req.id}
-                        className={[
-                          "rounded-xl border p-4",
-                          req.status === "approved" ? "border-emerald-200 bg-emerald-50/50"
-                            : req.status === "rejected" || req.status === "needs_resubmission" ? "border-amber-200 bg-amber-50/50"
-                            : "border-[var(--portal-outline)] bg-card",
-                        ].join(" ")}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
+                  <div className="overflow-x-auto rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <tr>
+                          <TableHead>Requirement</TableHead>
+                          <TableHead>Files</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Review action</TableHead>
+                        </tr>
+                      </TableHeader>
+                      <TableBody>
+                        {caseDetailsQuery.data.requirements.map((req) => (
+                          <TableRow key={req.id}>
+                            <TableCell className="min-w-[220px]">
                               <p className="font-semibold">{req.name}</p>
-                              <Badge variant="outline">{req.statusLabel}</Badge>
-                            </div>
-                            {(req.remarks ?? req.description) && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">{req.remarks ?? req.description}</p>
-                            )}
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              <FileText className="mr-1 inline h-3 w-3" />
-                              {req.documents.length} file{req.documents.length !== 1 ? "s" : ""} submitted
-                            </p>
-                          </div>
-                          {!isLocked && req.isActionable && req.status !== "approved" && (
-                            <div className="flex shrink-0 flex-wrap gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-8 gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                onClick={() => void handleRequirementAction(req, "approved")}
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Approve
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-8 gap-1.5 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                                onClick={() => void handleRequirementAction(req, "needs_resubmission")}
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                                Request resubmission
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-8 gap-1.5 border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
-                                onClick={() => void handleRequirementAction(req, "rejected")}
-                              >
-                                <XCircle className="h-3.5 w-3.5" />
-                                Reject
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        {!req.isActionable && (
-                          <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                            This is a document-only fallback because no requirement template is configured for this service. Add a requirement template before using requirement approval actions.
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {req.isRequired ? "Required" : "Optional"}
+                                {(req.remarks ?? req.description) ? ` · ${req.remarks ?? req.description}` : ""}
+                              </p>
+                            </TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
+                                <FileText className="h-3.5 w-3.5" /> {req.documents.length}
+                              </span>
+                            </TableCell>
+                            <TableCell><Badge variant="outline">{req.statusLabel}</Badge></TableCell>
+                            <TableCell>
+                              {!isLocked && req.isActionable && req.status !== "approved" ? (
+                                <div className="flex justify-end gap-1.5">
+                                  <Button type="button" size="sm" variant="outline" disabled={req.documents.length === 0} aria-label={`Approve ${req.name}`} onClick={() => void handleRequirementAction(req, "approved")}>
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                                  </Button>
+                                  <Button type="button" size="sm" variant="outline" aria-label={`Request resubmission for ${req.name}`} onClick={() => void handleRequirementAction(req, "needs_resubmission")}>
+                                    <RotateCcw className="h-3.5 w-3.5" /> Resubmit
+                                  </Button>
+                                  <Button type="button" size="sm" variant="outline" aria-label={`Reject ${req.name}`} onClick={() => void handleRequirementAction(req, "rejected")}>
+                                    <XCircle className="h-3.5 w-3.5" /> Reject
+                                  </Button>
+                                </div>
+                              ) : <span className="block text-right text-xs text-muted-foreground">Reviewed</span>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">

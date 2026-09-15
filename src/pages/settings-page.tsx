@@ -1194,10 +1194,17 @@ function ProgramEditorFields({
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className="overflow-hidden rounded-xl border bg-background">
+          <div className="hidden grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground md:grid">
+            <span className="col-span-3">Document</span>
+            <span className="col-span-2">Type</span>
+            <span className="col-span-4">Description</span>
+            <span className="col-span-1 text-center">Required</span>
+            <span className="col-span-2 text-right">Action</span>
+          </div>
           {form.requirements.map((requirement, index) => (
-            <div key={index} className="rounded-xl border bg-background p-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <div key={index} className="grid gap-3 border-b p-4 last:border-b-0 md:grid-cols-12 md:items-start">
+              <div className="md:col-span-3">
                 <FieldGroup label="Document label" htmlFor={`requirement-${index}-name`}>
                   <Input
                     id={`requirement-${index}-name`}
@@ -1208,6 +1215,8 @@ function ProgramEditorFields({
                     placeholder="e.g. Medical abstract"
                   />
                 </FieldGroup>
+              </div>
+              <div className="md:col-span-2">
                 <FieldGroup label="Document type" htmlFor={`requirement-${index}-type`}>
                   <Input
                     id={`requirement-${index}-type`}
@@ -1218,7 +1227,8 @@ function ProgramEditorFields({
                     placeholder="e.g. medical_certificate"
                   />
                 </FieldGroup>
-                <div className="space-y-2 md:col-span-2">
+              </div>
+                <div className="space-y-2 md:col-span-4">
                   <label
                     className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
                     htmlFor={`requirement-${index}-description`}
@@ -1235,10 +1245,7 @@ function ProgramEditorFields({
                     className="min-h-[64px]"
                   />
                 </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
-                <label className="flex items-center gap-2 text-sm font-medium">
+                <label className="flex items-center gap-2 text-sm font-medium md:col-span-1 md:justify-center md:pt-8">
                   <input
                     type="checkbox"
                     checked={requirement.isRequired}
@@ -1249,10 +1256,7 @@ function ProgramEditorFields({
                   />
                   Required
                 </label>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full border bg-muted/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Requirement {index + 1}
-                  </span>
+                <div className="flex items-center justify-end gap-3 md:col-span-2 md:pt-7">
                   <Button
                     type="button"
                     variant="outline"
@@ -1264,7 +1268,6 @@ function ProgramEditorFields({
                     Remove
                   </Button>
                 </div>
-              </div>
             </div>
           ))}
         </div>

@@ -32,6 +32,7 @@ import type { AssistanceRequestSubmissionResult } from "@/types/application";
 
 const requestSchema = z.object({
   assistanceTypeSlug: z.string().min(1, "Select an assistance type."),
+  eventDate: z.string(),
   relationshipToBeneficiary: z.string(),
   educationalAttainment: z.string(),
   occupation: z.string(),
@@ -51,6 +52,14 @@ const requestSchema = z.object({
   consentAccepted: z.boolean().refine((value) => value, {
     message: "You must agree before submitting.",
   }),
+}).superRefine((values, context) => {
+  if (["medical-assistance", "burial-assistance"].includes(values.assistanceTypeSlug) && !values.eventDate) {
+    context.addIssue({
+      code: "custom",
+      path: ["eventDate"],
+      message: "Enter the medical or bereavement event date.",
+    });
+  }
 });
 
 type RequestFormValues = z.infer<typeof requestSchema>;
@@ -61,7 +70,7 @@ const steps = [
 ] as const;
 
 const stepFields: Array<Array<keyof RequestFormValues>> = [
-  ["assistanceTypeSlug", "relationshipToBeneficiary", "educationalAttainment", "occupation", "familyComposition", "householdSize", "monthlyIncome", "requestReason"],
+  ["assistanceTypeSlug", "eventDate", "relationshipToBeneficiary", "educationalAttainment", "occupation", "familyComposition", "householdSize", "monthlyIncome", "requestReason"],
   ["consentAccepted"],
 ];
 
@@ -80,6 +89,7 @@ const emptyFamilyMember = {
 
 const defaultRequestValues: RequestFormValues = {
   assistanceTypeSlug: "",
+  eventDate: "",
   relationshipToBeneficiary: "",
   educationalAttainment: "",
   occupation: "",
@@ -172,6 +182,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
     try {
       const result = await createResidentAssistanceRequest({
         assistanceTypeSlug: values.assistanceTypeSlug,
+        eventDate: values.eventDate,
         requestedAmount: "",
         householdSize: values.householdSize,
         monthlyIncome: values.monthlyIncome,
@@ -282,6 +293,27 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
                 </p>
               ) : null}
             </div>
+
+            {["medical-assistance", "burial-assistance"].includes(selectedSlug) ? (
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-semibold" htmlFor="modal-eventDate">
+                  {selectedSlug === "burial-assistance" ? "Date of bereavement" : "Date of hospitalization or medical checkup"}
+                </label>
+                <Input
+                  id="modal-eventDate"
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  {...form.register("eventDate")}
+                />
+                {form.formState.errors.eventDate ? (
+                  <p className="text-sm text-destructive">{form.formState.errors.eventDate.message}</p>
+                ) : (
+                  <p className="text-xs text-[var(--portal-muted)]">
+                    The event must be within the last 90 days. Medical and Burial share a 365-day AICS application period.
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <label className="text-sm font-semibold" htmlFor="modal-relationshipToBeneficiary">

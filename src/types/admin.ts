@@ -84,6 +84,7 @@ export interface AdminCaseRequirementRecord {
   requirementId: string;
   name: string;
   description: string | null;
+  isRequired: boolean;
   sortOrder: number;
   status: string;
   statusLabel: string;

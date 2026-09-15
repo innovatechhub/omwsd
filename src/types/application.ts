@@ -42,6 +42,7 @@ export interface FamilyCompositionMember {
 
 export interface ResidentAssistanceRequestInput {
   assistanceTypeSlug: string;
+  eventDate: string;
   requestedAmount: string;
   householdSize: string;
   monthlyIncome: string;

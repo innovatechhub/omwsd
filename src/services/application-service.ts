@@ -207,6 +207,43 @@ export interface AssistanceTypeOption {
   turnaround: string;
 }
 
+export interface AssistanceEligibilityResult {
+  eligible: boolean;
+  reason: string;
+  nextEligibleDate: string | null;
+}
+
+export async function checkResidentAssistanceEligibility(
+  assistanceTypeSlug: string,
+  eventDate: string,
+): Promise<AssistanceEligibilityResult> {
+  const user = await requireAuthenticatedUser();
+  const { data: assistanceType, error: typeError } = await supabase
+    .from("assistance_types")
+    .select("id")
+    .eq("slug", assistanceTypeSlug)
+    .maybeSingle();
+
+  if (typeError) throw typeError;
+  if (!assistanceType) throw new Error("Selected assistance type could not be found.");
+
+  const { data, error } = await supabase.rpc("check_assistance_eligibility", {
+    p_assistance_type_id: assistanceType.id,
+    p_applicant_profile_id: user.id,
+    p_event_date: eventDate || null,
+    p_exclude_application_id: null,
+  });
+
+  if (error) throw error;
+  const result = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  return {
+    eligible: result?.eligible === true,
+    reason: String(result?.reason ?? "Unable to determine eligibility."),
+    nextEligibleDate:
+      typeof result?.next_eligible_date === "string" ? result.next_eligible_date : null,
+  };
+}
+
 export async function getResidentAssistanceTypes(): Promise<AssistanceTypeOption[]> {
   if (!isSupabaseConfigured) {
     return [];
@@ -435,18 +472,6 @@ export async function createResidentAssistanceRequest(
     throw new Error("Resident profile not found. Please complete your profile before submitting.");
   }
 
-  // Prevent duplicate submissions — block if there's already an active application
-  const { data: existing } = await supabase
-    .from("applications")
-    .select("id")
-    .eq("applicant_profile_id", user.id)
-    .not("status", "in", '("cancelled","rejected")')
-    .maybeSingle();
-
-  if (existing) {
-    throw new Error("You already have an active application. Please wait for it to be resolved before submitting a new one.");
-  }
-
   const referenceNumber = generateReferenceNumber();
 
   const { data: assistanceType, error: assistanceTypeError } = await supabase
@@ -457,6 +482,17 @@ export async function createResidentAssistanceRequest(
 
   if (assistanceTypeError) throw assistanceTypeError;
   if (!assistanceType) throw new Error("Selected assistance type could not be found.");
+
+  const eligibility = await checkResidentAssistanceEligibility(
+    input.assistanceTypeSlug,
+    input.eventDate,
+  );
+  if (!eligibility.eligible) {
+    const nextDate = eligibility.nextEligibleDate
+      ? ` Next eligible date: ${new Intl.DateTimeFormat("en-PH", { dateStyle: "long" }).format(new Date(`${eligibility.nextEligibleDate}T00:00:00`))}.`
+      : "";
+    throw new Error(`${eligibility.reason}${nextDate}`);
+  }
 
   const householdSize = input.householdSize
     ? parseNumber(input.householdSize) ?? parseNullableNumber(resident.household_size)
@@ -495,6 +531,7 @@ export async function createResidentAssistanceRequest(
       educational_attainment: input.educationalAttainment || null,
       occupation: input.occupation || null,
       family_composition: normalizeFamilyComposition(input.familyComposition),
+      event_date: input.eventDate || null,
     })
     .select("id")
     .single();
@@ -503,7 +540,18 @@ export async function createResidentAssistanceRequest(
 
   const applicationId = (application as Record<string, unknown>).id as string;
 
-  // Upload per-requirement files, storing the requirement name in remarks
+  const applicationRequirements = await seedApplicationRequirements(
+    applicationId,
+    String((assistanceType as Record<string, unknown>).id),
+  );
+  const requirementRecordByTemplate = new Map(
+    applicationRequirements.map((item) => [
+      item.requirementTemplateId,
+      item.applicationRequirementId,
+    ]),
+  );
+
+  // Store the foreign key as well as the label so requirements remain traceable.
   for (const entry of input.requirementFiles) {
     if (entry.files.length === 0) continue;
     await uploadDocuments(
@@ -512,7 +560,7 @@ export async function createResidentAssistanceRequest(
       applicationId,
       entry.files,
       "application-documents",
-      null,
+      requirementRecordByTemplate.get(entry.requirementTemplateId) ?? null,
       entry.requirementName,
     );
   }

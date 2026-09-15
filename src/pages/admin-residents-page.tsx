@@ -316,12 +316,6 @@ export function AdminResidentsPage() {
                                 icon: <Eye className="h-4 w-4" />,
                                 onSelect: () => openResidentModal(resident.id),
                               },
-                              {
-                                label: "Quick verify",
-                                icon: <UserRoundCheck className="h-4 w-4" />,
-                                disabled: isSaving || resident.status === "Verified" || !resident.hasResidentRow,
-                                onSelect: () => void handleVerifyResident(resident),
-                              },
                             ]}
                           />
                         </TableCell>
