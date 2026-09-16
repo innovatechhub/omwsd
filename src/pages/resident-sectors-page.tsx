@@ -71,7 +71,7 @@ export function ResidentSectorsPage() {
       </div>
 
       {/* How it works */}
-      <div className="portal-soft-card rounded-xl p-5">
+      <div className="portal-soft-card rounded-lg p-5">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">How it works</p>
         <ol className="grid gap-3 sm:grid-cols-4">
           {[
@@ -95,8 +95,8 @@ export function ResidentSectorsPage() {
 
       {/* Appointments shortcut — only shown once at least one sector is verified */}
       {hasVerified && (
-        <div className="flex items-center gap-4 rounded-xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100">
+        <div className="flex items-center gap-4 rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-green-100">
             <CalendarDays className="h-6 w-6 text-green-700" />
           </div>
           <div className="flex-1">
@@ -125,7 +125,7 @@ export function ResidentSectorsPage() {
           return (
             <div
               key={sector.type}
-              className={`relative flex flex-col rounded-xl border bg-gradient-to-br p-5 ${sector.color} ${isUnavailable ? "opacity-75" : ""}`}
+              className={`relative flex flex-col rounded-lg border bg-gradient-to-br p-5 ${sector.color} ${isUnavailable ? "opacity-75" : ""}`}
             >
               {isVerified && (
                 <span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
@@ -141,7 +141,7 @@ export function ResidentSectorsPage() {
               )}
 
               <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/70 shadow-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/70 shadow-sm">
                   {sector.icon}
                 </div>
                 <div className="flex-1 pr-8">

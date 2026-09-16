@@ -470,12 +470,12 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
               </div>
 
               {programsQuery.isLoading ? (
-                <div className="flex items-center gap-2 rounded-xl border border-dashed px-4 py-8 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-lg border border-dashed px-4 py-8 text-sm text-muted-foreground">
                   <LoaderCircle className="h-4 w-4 animate-spin" />
                   Loading programs...
                 </div>
               ) : filteredPrograms.length > 0 ? (
-                <div className="overflow-hidden rounded-xl border">
+                <div className="overflow-hidden rounded-lg border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -551,7 +551,7 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
                   </Table>
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
                   No programs match the current search.
                 </div>
               )}
@@ -700,11 +700,11 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
                   Loading users...
                 </div>
               ) : staffUsers.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-muted-foreground">
                   No staff users found. Click "Add user" to create one.
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border">
+                <div className="overflow-hidden rounded-lg border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -933,7 +933,7 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
                 <option value="social_worker">Staff</option>
               </Select>
             </div>
-            <div className="rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-xs text-[var(--portal-muted)]">
+            <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-xs text-[var(--portal-muted)]">
               Fill in the fields below only if you want to change this user's password.
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1070,7 +1070,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={[
-        "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+        "flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors",
         isActive
           ? residentMode
             ? "portal-nav-link-active"
@@ -1165,7 +1165,7 @@ function ProgramEditorFields({
         </div>
       </div>
 
-      <label className="flex items-center justify-between gap-4 rounded-xl border bg-muted/20 px-4 py-3">
+      <label className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-4 py-3">
         <span>
           <span className="block text-sm font-semibold">Program visibility</span>
           <span className="block text-xs text-muted-foreground">
@@ -1180,7 +1180,7 @@ function ProgramEditorFields({
         />
       </label>
 
-      <div className="space-y-3 rounded-xl border p-4">
+      <div className="space-y-3 rounded-lg border p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -1194,7 +1194,7 @@ function ProgramEditorFields({
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-xl border bg-background">
+        <div className="overflow-hidden rounded-lg border bg-background">
           <div className="hidden grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground md:grid">
             <span className="col-span-3">Document</span>
             <span className="col-span-2">Type</span>

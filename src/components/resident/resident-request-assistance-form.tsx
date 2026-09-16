@@ -222,7 +222,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <div className="rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm text-[var(--portal-muted)]">
+      <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm text-[var(--portal-muted)]">
         Your personal profile and resident details on file will be attached automatically.
       </div>
 
@@ -395,7 +395,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
             </div>
           </div>
 
-          <div className="space-y-3 rounded-xl border border-[var(--portal-outline)] bg-white p-4">
+          <div className="space-y-3 rounded-lg border border-[var(--portal-outline)] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-[var(--portal-ink)]">Family composition</p>
@@ -530,7 +530,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
           </div>
 
           {selectedService ? (
-            <div className="rounded-xl border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
+            <div className="rounded-lg border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
               <p className="font-semibold text-foreground">{selectedService.title}</p>
               <p className="mt-1">{selectedService.summary}</p>
               <p className="mt-1 text-xs">{selectedService.turnaround}</p>
@@ -569,7 +569,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
                 {requirements.map((req) => (
                   <div
                     key={req.id}
-                    className="rounded-xl border border-[var(--portal-outline)] bg-white p-4 space-y-3"
+                    className="rounded-lg border border-[var(--portal-outline)] bg-white p-4 space-y-3"
                   >
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
@@ -602,7 +602,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
                 ))}
 
                 {/* General / other documents */}
-                <div className="rounded-xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-4 space-y-3">
+                <div className="rounded-lg border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-4 space-y-3">
                   <div>
                     <p className="text-sm font-semibold text-[var(--portal-ink)]">Other documents</p>
                     <p className="mt-0.5 text-xs text-[var(--portal-muted)]">
@@ -643,7 +643,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
 
       {currentStep === 1 ? (
         <div className="space-y-5">
-          <div className="rounded-xl border bg-muted/25 p-5 text-sm">
+          <div className="rounded-lg border bg-muted/25 p-5 text-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--portal-muted)]">
               What you're submitting
             </p>
@@ -683,7 +683,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
             </div>
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-white px-4 py-4 text-sm transition-colors hover:bg-muted/20">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white px-4 py-4 text-sm transition-colors hover:bg-muted/20">
             <input
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded border-border"
@@ -699,7 +699,7 @@ export function ResidentRequestAssistanceForm({ onSuccess }: ResidentRequestAssi
           ) : null}
 
           {!isConfigured ? (
-            <div className="rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm text-[var(--portal-muted)]">
+            <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3 text-sm text-[var(--portal-muted)]">
               Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to enable
               submission.
             </div>

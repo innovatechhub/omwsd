@@ -232,7 +232,7 @@ export function ResidentSectorRegistrationPage() {
         </div>
 
         <div className="portal-card flex items-start gap-4 p-6">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100">
             <Lock className="h-5 w-5 text-slate-600" />
           </div>
           <div className="flex-1">
@@ -271,7 +271,7 @@ export function ResidentSectorRegistrationPage() {
 
       {/* Progress bar */}
       {reg && (
-        <div className="portal-soft-card rounded-xl p-4">
+        <div className="portal-soft-card rounded-lg p-4">
           <div className="flex items-center gap-1">
             {STEPS.map((stepLabel, idx) => {
               const done = idx < currentStep || isVerified;
@@ -372,7 +372,7 @@ export function ResidentSectorRegistrationPage() {
               />
 
               {step1File ? (
-                <div className="rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-3">
+                <div className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-3">
                   {step1Preview ? (
                     <div className="mb-3 overflow-hidden rounded-lg border border-[var(--portal-outline)] bg-white">
                       <img
@@ -402,7 +402,7 @@ export function ResidentSectorRegistrationPage() {
                 <button
                   type="button"
                   onClick={() => step1FileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[var(--portal-outline)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-blue-50/40"
+                  className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-[var(--portal-outline)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-blue-50/40"
                 >
                   <Upload className="h-7 w-7 text-[var(--portal-muted)]" />
                   <span className="text-sm font-semibold text-[var(--portal-ink)]">Click to select photo or file</span>
@@ -511,7 +511,7 @@ export function ResidentSectorRegistrationPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[var(--portal-outline)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-blue-50/40"
+              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-[var(--portal-outline)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-blue-50/40"
             >
               <Upload className="h-7 w-7 text-[var(--portal-muted)]" />
               <span className="text-sm font-semibold text-[var(--portal-ink)]">

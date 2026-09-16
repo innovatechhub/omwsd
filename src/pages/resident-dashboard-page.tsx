@@ -155,7 +155,7 @@ export function ResidentDashboardPage() {
               {application ? (
                 <>
                   {/* Meta row */}
-                  <div className="grid gap-3 rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-4 sm:grid-cols-3">
+                  <div className="grid gap-3 rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-4 sm:grid-cols-3">
                     <ApplicationMetaItem label="Service" value={application.assistanceName} />
                     <ApplicationMetaItem label="Submitted" value={application.submittedAtLabel} />
                     <ApplicationMetaItem
@@ -198,7 +198,7 @@ export function ResidentDashboardPage() {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-6 py-10 text-center">
+                <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-6 py-10 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
                     <FileText className="h-6 w-6 text-[var(--portal-accent)]" />
                   </div>
@@ -358,7 +358,7 @@ export function ResidentDashboardPage() {
               <CardDescription>Files uploaded to your application.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-3 rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
+              <div className="flex items-center gap-3 rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-sm">
                   <FileWarning className="h-5 w-5 text-[var(--portal-accent)]" />
                 </div>
@@ -453,7 +453,7 @@ function StatCard({
   return (
     <Card className="portal-card border-[var(--portal-outline)] shadow-none">
       <CardContent className="flex items-center gap-4 p-4">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
           {icon}
         </div>
         <div className="min-w-0">

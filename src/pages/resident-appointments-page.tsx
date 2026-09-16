@@ -62,8 +62,8 @@ const STATUS_CONFIG: Record<
 function AppointmentCard({ appointment }: { appointment: Appointment }) {
   const cfg = STATUS_CONFIG[appointment.status];
   return (
-    <div className="flex items-start gap-4 rounded-xl border border-[var(--portal-outline)] bg-white p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--portal-surface-soft)]">
+    <div className="flex items-start gap-4 rounded-lg border border-[var(--portal-outline)] bg-white p-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--portal-surface-soft)]">
         <Calendar className="h-5 w-5 text-[var(--portal-accent)]" />
       </div>
       <div className="flex-1 min-w-0">
@@ -224,7 +224,7 @@ export function ResidentAppointmentsPage() {
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-[var(--portal-ink)]">My Appointments</h1>
         </div>
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--portal-outline)] py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--portal-outline)] py-16 text-center">
           <Calendar className="mb-3 h-10 w-10 text-[var(--portal-muted)]" />
           <p className="text-sm font-semibold text-[var(--portal-ink)]">No verified sector registration</p>
           <p className="mt-1 text-xs text-[var(--portal-muted)]">
@@ -306,7 +306,7 @@ export function ResidentAppointmentsPage() {
           Upcoming
         </h2>
         {upcomingAppointments.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--portal-outline)] py-10 text-center">
+          <div className="rounded-lg border border-dashed border-[var(--portal-outline)] py-10 text-center">
             <Clock className="mx-auto mb-2 h-7 w-7 text-[var(--portal-muted)]" />
             <p className="text-sm text-[var(--portal-muted)]">No upcoming appointments.</p>
           </div>

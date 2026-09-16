@@ -58,10 +58,10 @@ export function AdminLayout() {
 
   return (
     <div className="portal-shell min-h-screen">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[280px_1fr]">
-        <aside className="border-b border-[var(--portal-outline)] bg-[rgba(255,255,255,0.75)] p-4 backdrop-blur lg:border-b-0 lg:border-r lg:p-6">
-          <div className="flex h-full flex-col gap-6 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
-            <div className="portal-card space-y-3 p-4">
+      <div className="grid min-h-screen lg:grid-cols-[252px_1fr]">
+        <aside className="border-b border-[var(--portal-outline)] bg-white p-4 lg:border-b-0 lg:border-r">
+          <div className="flex h-full flex-col gap-6 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+            <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <BrandMark size="sm" />
                 <div>
@@ -71,7 +71,7 @@ export function AdminLayout() {
                   <p className="text-xl font-semibold text-[var(--portal-ink)]">{portalTitle}</p>
                 </div>
               </div>
-              <div className="portal-soft-card p-3">
+              <div className="border-t border-[var(--portal-outline)] pt-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--portal-muted)]">
                   {accessLabel}
                 </p>
@@ -93,7 +93,7 @@ export function AdminLayout() {
                   end={to === "/admin"}
                   className={({ isActive }) =>
                     [
-                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive
                         ? "portal-nav-link-active"
                         : "border-transparent text-[var(--portal-muted)] hover:border-[var(--portal-outline)] hover:bg-[var(--portal-surface-soft)] hover:text-[var(--portal-ink)]",
@@ -129,6 +129,20 @@ export function AdminLayout() {
         </aside>
 
         <div className="flex min-h-screen flex-col">
+          <header className="border-b border-[var(--portal-outline)] bg-white px-5 py-3 md:px-8">
+            <div className="flex min-h-10 items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-[var(--portal-ink)]">{portalTitle}</p>
+                <p className="text-xs text-[var(--portal-muted)]">OMSWD Pandan operations</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-[var(--portal-ink)]">
+                  {profile?.full_name ?? fallbackAccountLabel}
+                </p>
+                <p className="text-xs text-[var(--portal-muted)]">{accessLabel}</p>
+              </div>
+            </div>
+          </header>
           <main className="flex-1 p-5 md:p-8">
             <Outlet />
           </main>

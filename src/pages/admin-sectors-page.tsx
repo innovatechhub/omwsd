@@ -168,7 +168,7 @@ export function AdminSectorsPage() {
           ) : registrations.length === 0 ? (
             <div className="py-16 text-center text-sm text-[var(--portal-muted)]">No sector registrations found.</div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-[var(--portal-outline)]">
+            <div className="overflow-hidden rounded-lg border border-[var(--portal-outline)]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[var(--portal-surface-soft)]">
@@ -344,7 +344,7 @@ function AppointmentManager({
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-sm text-[var(--portal-muted)]">No appointments found.</div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--portal-outline)]">
+        <div className="overflow-hidden rounded-lg border border-[var(--portal-outline)]">
           <Table>
             <TableHeader>
               <TableRow className="bg-[var(--portal-surface-soft)]">
@@ -463,7 +463,7 @@ function SlotManager({ slots, isLoading, qc }: { slots: AppointmentSlot[]; isLoa
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--portal-outline)]">
+    <div className="overflow-hidden rounded-lg border border-[var(--portal-outline)]">
       <Table>
         <TableHeader>
           <TableRow className="bg-[var(--portal-surface-soft)]">

@@ -61,11 +61,11 @@ export function DocumentDropzone({
 
       <div
         {...dropzone.getRootProps()}
-        className="rounded-2xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-white"
+        className="rounded-lg border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-white"
       >
         <input {...dropzone.getInputProps()} />
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[var(--portal-accent)] shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-[var(--portal-accent)] shadow-sm">
             <UploadCloud className="h-6 w-6" />
           </div>
           <div className="space-y-1">
@@ -80,10 +80,10 @@ export function DocumentDropzone({
           {files.map((file) => (
             <div
               key={`${file.name}-${file.size}`}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--portal-outline)] bg-white/90 px-4 py-3"
+              className="flex items-center justify-between gap-4 rounded-lg border border-[var(--portal-outline)] bg-white/90 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--portal-surface-soft)]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--portal-surface-soft)]">
                   <FileText className="h-5 w-5 text-[var(--portal-accent)]" />
                 </div>
                 <div className="min-w-0">

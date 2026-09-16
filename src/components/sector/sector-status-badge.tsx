@@ -20,7 +20,7 @@ export function SectorStatusBadge({ status, label }: Props) {
   return (
     <Badge
       variant={statusVariantMap[status]}
-      className="rounded-full px-2.5 py-0.5 text-xs font-medium normal-case tracking-normal"
+      className="rounded-md px-2.5 py-0.5 text-xs font-medium normal-case tracking-normal"
     >
       {label}
     </Badge>

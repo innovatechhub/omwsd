@@ -235,7 +235,7 @@ export function AdminResidentsPage() {
           </div>
 
           {residentsQuery.isLoading ? (
-            <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
               Loading resident records...
             </div>
           ) : filteredResidents.length > 0 ? (
@@ -245,7 +245,7 @@ export function AdminResidentsPage() {
                   <button
                     key={resident.id}
                     type="button"
-                    className="rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/20"
+                    className="rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/20"
                     onClick={() => openResidentModal(resident.id)}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -326,7 +326,7 @@ export function AdminResidentsPage() {
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
               No residents matched the current filters.
             </div>
           )}
@@ -356,7 +356,7 @@ export function AdminResidentsPage() {
       >
         {followUpResident ? (
           <div className="space-y-4">
-            <div className="rounded-xl border bg-muted/20 p-4">
+            <div className="rounded-lg border bg-muted/20 p-4">
               <p className="text-sm font-semibold">{followUpResident.name}</p>
               <p className="text-xs text-muted-foreground">{followUpResident.barangay} · {followUpResident.contact}</p>
             </div>
@@ -473,7 +473,7 @@ export function AdminResidentsPage() {
                   Loading uploaded IDs...
                 </div>
               ) : idFilesQuery.data && idFilesQuery.data.length > 0 ? (
-                <div className="divide-y rounded-xl border">
+                <div className="divide-y rounded-lg border">
                   {idFilesQuery.data.map((file) => (
                     <div
                       key={file.filePath}
@@ -502,7 +502,7 @@ export function AdminResidentsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
                   No government ID files uploaded yet.
                 </div>
               )}

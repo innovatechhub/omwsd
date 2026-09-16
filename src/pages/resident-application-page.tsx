@@ -338,7 +338,7 @@ export function ResidentApplicationPage() {
                         <div
                           key={requirement.id}
                           className={[
-                            "rounded-xl border p-4",
+                            "rounded-lg border p-4",
                             needsResubmit
                               ? "border-yellow-300 bg-yellow-50"
                               : "border-[var(--portal-outline)] bg-white",
@@ -599,7 +599,7 @@ function DetailTabButton({
       type="button"
       onClick={onClick}
       className={[
-        "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+        "flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors",
         isActive
           ? "portal-nav-link-active"
           : "border-transparent text-[var(--portal-muted)] hover:border-[var(--portal-outline)] hover:bg-[var(--portal-surface-soft)] hover:text-[var(--portal-ink)]",

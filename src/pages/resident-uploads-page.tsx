@@ -140,7 +140,7 @@ export function ResidentUploadsPage() {
                 </Select>
               </div>
 
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <div className="flex items-start gap-3">
                   <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                   <div className="space-y-1 text-sm text-blue-800">

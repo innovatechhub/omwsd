@@ -5,10 +5,10 @@ interface BrandMarkProps {
 }
 
 const sizeClasses = {
-  sm: "h-12 w-12 rounded-2xl",
-  md: "h-14 w-14 rounded-3xl",
-  lg: "h-20 w-20 rounded-[1.75rem]",
-  xl: "h-28 w-28 rounded-[2rem]",
+  sm: "h-11 w-11 rounded-lg",
+  md: "h-14 w-14 rounded-xl",
+  lg: "h-20 w-20 rounded-xl",
+  xl: "h-28 w-28 rounded-2xl",
 } as const;
 
 export function BrandMark({ size = "md" }: BrandMarkProps) {

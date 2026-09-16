@@ -257,7 +257,7 @@ export function ProfilePage() {
             { label: "Street address", value: profile.addressLine || "Not set" },
             { label: "Household size", value: profile.householdSize || "Not set" },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
+            <div key={label} className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--portal-muted)]">
                 {label}
               </p>
@@ -479,7 +479,7 @@ function ProfileMetricCard({
 }) {
   return (
     <div className="portal-metric-card p-5">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[var(--portal-accent)]">
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--portal-accent)]">
         <Icon className="h-5 w-5" />
       </div>
       <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--portal-muted)]">

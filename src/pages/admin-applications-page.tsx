@@ -289,7 +289,7 @@ export function AdminApplicationsPage() {
                   aria-selected={isActive}
                   onClick={() => setActiveStatus(tab.status)}
                   className={[
-                    "flex min-h-11 items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-left text-sm font-semibold transition-colors",
+                    "flex min-h-11 items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-left text-sm font-semibold transition-colors",
                     isActive
                       ? "border-primary/20 bg-primary text-primary-foreground"
                       : "border-[var(--portal-outline)] bg-white text-[var(--portal-muted)] hover:bg-[var(--portal-surface-soft)] hover:text-[var(--portal-ink)]",
@@ -315,7 +315,7 @@ export function AdminApplicationsPage() {
           </div>
 
           {applicationsQuery.isLoading ? (
-            <div className="rounded-xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-[var(--portal-muted)]">
+            <div className="rounded-lg border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-[var(--portal-muted)]">
               Loading application records...
             </div>
           ) : filteredApplications.length > 0 ? (
@@ -328,7 +328,7 @@ export function AdminApplicationsPage() {
                     <button
                       key={application.reference}
                       type="button"
-                      className="rounded-xl border border-[var(--portal-outline)] bg-white p-4 text-left transition-colors hover:bg-[var(--portal-surface-soft)]"
+                      className="rounded-lg border border-[var(--portal-outline)] bg-white p-4 text-left transition-colors hover:bg-[var(--portal-surface-soft)]"
                       onClick={() => openCaseModal(application.reference)}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -428,7 +428,7 @@ export function AdminApplicationsPage() {
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-[var(--portal-muted)]">
+            <div className="rounded-lg border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-10 text-center text-sm text-[var(--portal-muted)]">
               No {activeStatusLabel.toLowerCase()} applications matched the current search.
             </div>
           )}
@@ -566,7 +566,7 @@ export function AdminApplicationsPage() {
 
               {/* Locked banner for approved/completed */}
               {isLocked && (
-                <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
+                <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   <div>
                     <p className="font-semibold text-emerald-900">Case is approved</p>
@@ -616,7 +616,7 @@ export function AdminApplicationsPage() {
 
               {/* Correction items — only when For correction is selected */}
               {!isLocked && statusDraft === "For correction" && (
-                <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                   <label className="text-sm font-semibold text-amber-900" htmlFor="correction-items">
                     Items to correct
                   </label>
@@ -633,7 +633,7 @@ export function AdminApplicationsPage() {
 
               {/* Resident's notes */}
               {selectedApplication.requestReason && (
-                <div className="space-y-1.5 rounded-xl border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
+                <div className="space-y-1.5 rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Resident's notes</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{selectedApplication.requestReason}</p>
                 </div>
@@ -670,7 +670,7 @@ export function AdminApplicationsPage() {
                     <LoaderCircle className="h-4 w-4 animate-spin" /> Loading requirements...
                   </div>
                 ) : caseDetailsQuery.data?.requirements.length ? (
-                  <div className="overflow-x-auto rounded-xl border">
+                  <div className="overflow-x-auto rounded-lg border">
                     <Table>
                       <TableHeader>
                         <tr>
@@ -717,7 +717,7 @@ export function AdminApplicationsPage() {
                     </Table>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                     No requirements linked to this application yet.
                   </div>
                 )}
@@ -731,7 +731,7 @@ export function AdminApplicationsPage() {
                     <LoaderCircle className="h-4 w-4 animate-spin" /> Loading documents...
                   </div>
                 ) : caseDetailsQuery.data?.documents.length ? (
-                  <div className="rounded-xl border">
+                  <div className="rounded-lg border">
                     <Table>
                       <TableHeader>
                         <tr>
@@ -774,7 +774,7 @@ export function AdminApplicationsPage() {
                     </Table>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                     No documents submitted yet.
                   </div>
                 )}
@@ -785,7 +785,7 @@ export function AdminApplicationsPage() {
                 <button
                   type="button"
                   onClick={() => setHistoryExpanded((p) => !p)}
-                  className="flex w-full items-center justify-between rounded-xl border bg-muted/30 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-muted/50"
+                  className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-muted/50"
                 >
                   <span>Case history</span>
                   {historyExpanded
@@ -793,7 +793,7 @@ export function AdminApplicationsPage() {
                     : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                 </button>
                 {historyExpanded && (
-                  <div className="rounded-xl border">
+                  <div className="rounded-lg border">
                     {statusHistoryQuery.isLoading ? (
                       <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
                         <LoaderCircle className="h-4 w-4 animate-spin" /> Loading history...
