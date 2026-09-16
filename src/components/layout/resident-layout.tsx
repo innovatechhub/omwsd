@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
 import { queryKeys } from "@/lib/query-keys";
@@ -181,113 +182,114 @@ export function ResidentLayout() {
                 </Link>
               </Button>
 
-              <div className="relative">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
-                  onClick={() => setNotificationsOpen((current) => !current)}
-                  aria-label="Open notifications"
-                >
-                  <Bell className="h-4 w-4" />
-                  {unreadNotifications > 0 && (
-                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
-                      {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                    </span>
-                  )}
-                </Button>
-
-                {notificationsOpen && (
-                  <div className="absolute right-0 z-20 mt-2 w-[min(94vw,24rem)] rounded-xl border border-[var(--portal-outline)] bg-white p-3 shadow-xl">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--portal-ink)]">Notifications</p>
-                        <p className="text-xs text-[var(--portal-muted)]">
-                          {unreadNotifications > 0 ? `${unreadNotifications} unread` : "All caught up"}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="border-[var(--portal-outline)]"
-                        onClick={() => void handleMarkAllNotificationsRead()}
-                        disabled={isMarkingAllRead || unreadNotifications === 0}
-                      >
-                        {isMarkingAllRead ? (
-                          <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <CheckCheck className="h-3.5 w-3.5" />
-                        )}
-                        Mark all read
-                      </Button>
-                    </div>
-
-                    {latestNotifications.length > 0 ? (
-                      <div className="max-h-[24rem] space-y-2 overflow-y-auto pr-1">
-                        {latestNotifications.map((notification) => {
-                          const target = resolveNotificationTarget(notification.linkUrl);
-                          return (
-                            <div
-                              key={notification.id}
-                              className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-2.5"
-                            >
-                              <div className="mb-1 flex items-start justify-between gap-3">
-                                <p className="text-sm font-semibold text-[var(--portal-ink)]">{notification.title}</p>
-                                {!notification.isRead && (
-                                  <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-500" />
-                                )}
-                              </div>
-                              <p className="line-clamp-2 text-xs text-[var(--portal-muted)]">{notification.body}</p>
-                              <p className="mt-1 text-[11px] text-[var(--portal-muted)]">{notification.createdAtLabel}</p>
-                              <div className="mt-2 flex items-center gap-2">
-                                {target.external ? (
-                                  <a
-                                    href={target.to}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--portal-accent)] hover:underline"
-                                  >
-                                    Open
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                ) : (
-                                  <Link
-                                    to={target.to}
-                                    onClick={() => setNotificationsOpen(false)}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--portal-accent)] hover:underline"
-                                  >
-                                    Open
-                                  </Link>
-                                )}
-                                {!notification.isRead && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleMarkNotificationRead(notification.id)}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--portal-muted)] hover:text-[var(--portal-ink)]"
-                                    disabled={pendingNotificationId === notification.id}
-                                  >
-                                    {pendingNotificationId === notification.id ? (
-                                      <LoaderCircle className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <CheckCheck className="h-3 w-3" />
-                                    )}
-                                    Mark read
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-dashed border-[var(--portal-outline)] px-3 py-6 text-center text-sm text-[var(--portal-muted)]">
-                        No notifications yet.
-                      </div>
+              <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="relative border-[var(--portal-outline)] bg-white hover:bg-[var(--portal-surface-soft)]"
+                    aria-label="Open notifications"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {unreadNotifications > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
+                        {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                      </span>
                     )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-[min(94vw,24rem)] border-[var(--portal-outline)] bg-white p-3"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--portal-ink)]">Notifications</p>
+                      <p className="text-xs text-[var(--portal-muted)]">
+                        {unreadNotifications > 0 ? `${unreadNotifications} unread` : "All caught up"}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-[var(--portal-outline)]"
+                      onClick={() => void handleMarkAllNotificationsRead()}
+                      disabled={isMarkingAllRead || unreadNotifications === 0}
+                    >
+                      {isMarkingAllRead ? (
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CheckCheck className="h-3.5 w-3.5" />
+                      )}
+                      Mark all read
+                    </Button>
                   </div>
-                )}
-              </div>
+
+                  {latestNotifications.length > 0 ? (
+                    <div className="max-h-[24rem] space-y-2 overflow-y-auto pr-1">
+                      {latestNotifications.map((notification) => {
+                        const target = resolveNotificationTarget(notification.linkUrl);
+                        return (
+                          <div
+                            key={notification.id}
+                            className="rounded-lg border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-2.5"
+                          >
+                            <div className="mb-1 flex items-start justify-between gap-3">
+                              <p className="text-sm font-semibold text-[var(--portal-ink)]">{notification.title}</p>
+                              {!notification.isRead && (
+                                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                              )}
+                            </div>
+                            <p className="line-clamp-2 text-xs text-[var(--portal-muted)]">{notification.body}</p>
+                            <p className="mt-1 text-[11px] text-[var(--portal-muted)]">{notification.createdAtLabel}</p>
+                            <div className="mt-2 flex items-center gap-2">
+                              {target.external ? (
+                                <a
+                                  href={target.to}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--portal-accent)] hover:underline"
+                                >
+                                  Open
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                <Link
+                                  to={target.to}
+                                  onClick={() => setNotificationsOpen(false)}
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--portal-accent)] hover:underline"
+                                >
+                                  Open
+                                </Link>
+                              )}
+                              {!notification.isRead && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleMarkNotificationRead(notification.id)}
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--portal-muted)] hover:text-[var(--portal-ink)]"
+                                  disabled={pendingNotificationId === notification.id}
+                                >
+                                  {pendingNotificationId === notification.id ? (
+                                    <LoaderCircle className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <CheckCheck className="h-3 w-3" />
+                                  )}
+                                  Mark read
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-[var(--portal-outline)] px-3 py-6 text-center text-sm text-[var(--portal-muted)]">
+                      No notifications yet.
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
           </header>
           <main className="flex-1 p-5 md:p-8">

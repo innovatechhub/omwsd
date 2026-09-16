@@ -23,7 +23,8 @@ import { Link } from "react-router-dom";
 
 import { getAdminApplications } from "@/services/admin-service";
 import type { AdminApplicationRecord, AdminQueueItem } from "@/types/admin";
-import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -220,13 +221,15 @@ export function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {dashboardQuery.isError && (
-        <div className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span className="flex-1">Failed to load dashboard data.</span>
+        <Alert variant="destructive" className="flex items-center gap-3">
+          <div className="flex flex-1 items-center gap-3">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <AlertDescription className="flex-1">Failed to load dashboard data.</AlertDescription>
+          </div>
           <Button size="sm" variant="outline" onClick={() => dashboardQuery.refetch()}>
             Retry
           </Button>
-        </div>
+        </Alert>
       )}
 
       <Card>
@@ -494,13 +497,13 @@ function KpiCard({
   );
 }
 
-function QueueRow({ item }: { item: AdminQueueItem }) {
-  const priorityVariant: Record<string, string> = {
-    Urgent: "bg-red-50 text-red-700 border-red-200",
-    High: "bg-orange-50 text-orange-700 border-orange-200",
-    Normal: "bg-blue-50 text-blue-700 border-blue-200",
-  };
+const priorityBadgeVariant: Record<string, BadgeProps["variant"]> = {
+  Urgent: "destructive",
+  High: "warning",
+  Normal: "info",
+};
 
+function QueueRow({ item }: { item: AdminQueueItem }) {
   const slaDays = item.submittedAtRaw
     ? Math.floor((Date.now() - new Date(item.submittedAtRaw).getTime()) / 86_400_000)
     : null;
@@ -523,11 +526,7 @@ function QueueRow({ item }: { item: AdminQueueItem }) {
             {slaDays}d
           </span>
         )}
-        <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${priorityVariant[item.priority] ?? ""}`}
-        >
-          {item.priority}
-        </span>
+        <Badge variant={priorityBadgeVariant[item.priority] ?? "outline"}>{item.priority}</Badge>
         <Badge variant="outline">{item.status}</Badge>
       </div>
     </Link>

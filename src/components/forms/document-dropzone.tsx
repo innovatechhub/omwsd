@@ -61,7 +61,7 @@ export function DocumentDropzone({
 
       <div
         {...dropzone.getRootProps()}
-        className="rounded-3xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-white"
+        className="rounded-2xl border border-dashed border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] p-6 text-center transition-colors hover:border-[var(--portal-accent)] hover:bg-white"
       >
         <input {...dropzone.getInputProps()} />
         <div className="flex flex-col items-center gap-3">

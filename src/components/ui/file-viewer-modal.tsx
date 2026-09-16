@@ -1,5 +1,6 @@
 import { X, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface FileViewerModalProps {
   open: boolean;
@@ -13,38 +14,27 @@ function isImage(url: string) {
 }
 
 export function FileViewerModal({ open, url, title = "File viewer", onClose }: FileViewerModalProps) {
-  if (!open || !url) return null;
+  if (!url) return null;
 
   const image = isImage(url);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <button
-        type="button"
-        aria-label="Close file viewer"
-        className="absolute inset-0 bg-foreground/25 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className={cn(
-          "relative z-10 flex max-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-panel",
-        )}
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        hideClose
+        className="flex max-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col gap-0 overflow-hidden p-0"
       >
         <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
           <div className="flex items-center gap-2 text-foreground">
             <FileText className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-base font-semibold">{title}</h2>
+            <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
           </div>
-          <button
-            type="button"
+          <DialogClose
             aria-label="Close file viewer"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            onClick={onClose}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-4 w-4" />
-          </button>
+          </DialogClose>
         </header>
 
         <div className="min-h-0 flex-1 overflow-auto bg-muted/30">
@@ -57,14 +47,10 @@ export function FileViewerModal({ open, url, title = "File viewer", onClose }: F
               />
             </div>
           ) : (
-            <iframe
-              src={url}
-              title={title}
-              className="h-[75vh] w-full border-0"
-            />
+            <iframe src={url} title={title} className="h-[75vh] w-full border-0" />
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

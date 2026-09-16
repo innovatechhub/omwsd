@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router-dom";
 
 import { ResidentStateCard } from "@/components/resident/resident-state-card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,15 +56,15 @@ export function ResidentDashboardPage() {
 
       {/* Profile incomplete banner */}
       {!profileIsComplete && (
-        <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <Alert variant="warning" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <UserCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <UserCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
-              <p className="font-semibold text-amber-900">Complete your profile to get started</p>
-              <p className="mt-0.5 text-sm text-amber-700">
+              <AlertTitle className="text-amber-900">Complete your profile to get started</AlertTitle>
+              <AlertDescription className="mt-0.5 text-amber-700">
                 Your account is active but your resident profile is not yet filled out. You need to
                 complete it before you can submit an assistance request.
-              </p>
+              </AlertDescription>
             </div>
           </div>
           <Link
@@ -72,21 +73,19 @@ export function ResidentDashboardPage() {
           >
             Complete profile →
           </Link>
-        </div>
+        </Alert>
       )}
 
       {/* Action required banner */}
       {needsActionCount > 0 && (
-        <div className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <Alert variant="destructive" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
-              <p className="font-semibold text-red-900">
+              <AlertTitle>
                 {needsActionCount} item{needsActionCount === 1 ? "" : "s"} require your attention
-              </p>
-              <p className="mt-0.5 text-sm text-red-700">
-                Please review staff remarks and upload the requested files.
-              </p>
+              </AlertTitle>
+              <AlertDescription>Please review staff remarks and upload the requested files.</AlertDescription>
             </div>
           </div>
           <Button
@@ -99,7 +98,7 @@ export function ResidentDashboardPage() {
               Go to uploads
             </Link>
           </Button>
-        </div>
+        </Alert>
       )}
 
       {/* Stat cards */}
@@ -167,10 +166,12 @@ export function ResidentDashboardPage() {
 
                   {/* Admin remarks */}
                   {application.adminRemarks && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-                      <p className="font-semibold text-amber-900">Staff remarks</p>
-                      <p className="mt-1 text-amber-800">{application.adminRemarks}</p>
-                    </div>
+                    <Alert variant="warning">
+                      <AlertTitle className="text-amber-900">Staff remarks</AlertTitle>
+                      <AlertDescription className="mt-1 text-amber-800">
+                        {application.adminRemarks}
+                      </AlertDescription>
+                    </Alert>
                   )}
 
                   {/* Action buttons */}

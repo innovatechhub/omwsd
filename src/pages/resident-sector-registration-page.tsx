@@ -30,7 +30,10 @@ import {
 } from "@/hooks/use-sector-registrations";
 import { AppointmentSlotPicker } from "@/components/sector/appointment-slot-picker";
 import { SectorStatusBadge } from "@/components/sector/sector-status-badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import type { SectorType } from "@/types/sector";
 
 const SECTOR_META: Record<SectorType, {
@@ -298,28 +301,30 @@ export function ResidentSectorRegistrationPage() {
 
       {/* Admin remarks */}
       {reg?.adminRemarks && (
-        <div className={`flex items-start gap-3 rounded-xl border p-4 ${isRejected ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
-          <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${isRejected ? "text-red-500" : "text-amber-500"}`} />
-          <div>
-            <p className={`text-sm font-semibold ${isRejected ? "text-red-700" : "text-amber-700"}`}>
-              {isRejected ? "Registration rejected" : "Note from OMSWD"}
-            </p>
-            <p className={`text-sm ${isRejected ? "text-red-600" : "text-amber-600"}`}>{reg.adminRemarks}</p>
+        <Alert variant={isRejected ? "destructive" : "warning"}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <AlertTitle>{isRejected ? "Registration rejected" : "Note from OMSWD"}</AlertTitle>
+              <AlertDescription className="mt-0.5">{reg.adminRemarks}</AlertDescription>
+            </div>
           </div>
-        </div>
+        </Alert>
       )}
 
       {/* Verified */}
       {isVerified && (
-        <div className="flex items-start gap-4 rounded-xl border border-green-200 bg-green-50 p-5">
-          <CheckCircle2 className="mt-0.5 h-6 w-6 text-green-600" />
-          <div>
-            <p className="text-base font-bold text-green-800">Registration verified!</p>
-            <p className="text-sm text-green-700">
-              OMSWD has confirmed your {meta.label} status. You are now entitled to the associated benefits and services.
-            </p>
+        <Alert variant="success">
+          <div className="flex items-start gap-4">
+            <CheckCircle2 className="mt-0.5 h-6 w-6" />
+            <div>
+              <AlertTitle className="text-base">Registration verified!</AlertTitle>
+              <AlertDescription className="mt-0.5">
+                OMSWD has confirmed your {meta.label} status. You are now entitled to the associated benefits and services.
+              </AlertDescription>
+            </div>
           </div>
-        </div>
+        </Alert>
       )}
 
       {/* Step panels */}
@@ -334,27 +339,22 @@ export function ResidentSectorRegistrationPage() {
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">
                 Document / ID type <span className="text-red-500">*</span>
               </label>
-              <select
-                value={selectedIdType}
-                onChange={(e) => setSelectedIdType(e.target.value)}
-                className="w-full rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-accent)]"
-              >
+              <Select value={selectedIdType} onChange={(e) => setSelectedIdType(e.target.value)}>
                 <option value="">Select ID/document type...</option>
                 {meta.idTypes.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">
                 ID / Certificate number (optional)
               </label>
-              <input
+              <Input
                 type="text"
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="e.g. PWD-2024-00123"
-                className="w-full rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-accent)]"
               />
             </div>
 
@@ -425,15 +425,17 @@ export function ResidentSectorRegistrationPage() {
 
       {reg?.status === "pending_review" && (
         <div className="portal-card p-6 space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-            <div>
-              <p className="text-sm font-bold text-amber-800">Waiting for admin approval</p>
-              <p className="text-sm text-amber-700">
-                Your registration has been submitted and is being reviewed by OMSWD staff. You will be notified once it is approved and you can proceed to book an appointment.
-              </p>
+          <Alert variant="warning">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <AlertTitle>Waiting for admin approval</AlertTitle>
+                <AlertDescription>
+                  Your registration has been submitted and is being reviewed by OMSWD staff. You will be notified once it is approved and you can proceed to book an appointment.
+                </AlertDescription>
+              </div>
             </div>
-          </div>
+          </Alert>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">ID / Document type</p>
             <p className="mt-0.5 text-sm text-[var(--portal-ink)]">{reg.sectorIdType ?? "—"}</p>
@@ -480,16 +482,18 @@ export function ResidentSectorRegistrationPage() {
 
       {reg?.status === "appointment_booked" && (
         <div className="portal-card p-6 space-y-5">
-          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
-            <Clock className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
-            <div>
-              <p className="text-sm font-bold text-blue-800">Appointment confirmed</p>
-              <p className="text-sm text-blue-700">{appointment?.slotLabel ?? "Appointment slot booked"}</p>
-              <p className="mt-1 text-xs text-blue-600">
-                Bring your original {reg.sectorIdType} on the day of your appointment.
-              </p>
+          <Alert variant="info">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <AlertTitle>Appointment confirmed</AlertTitle>
+                <AlertDescription>{appointment?.slotLabel ?? "Appointment slot booked"}</AlertDescription>
+                <p className="mt-1 text-xs text-sky-700">
+                  Bring your original {reg.sectorIdType} on the day of your appointment.
+                </p>
+              </div>
             </div>
-          </div>
+          </Alert>
 
           <div>
             <h2 className="text-base font-bold text-[var(--portal-ink)]">Step 4 — Upload your document</h2>
@@ -542,15 +546,17 @@ export function ResidentSectorRegistrationPage() {
 
       {(reg?.status === "document_uploaded" || reg?.status === "under_review") && (
         <div className="portal-card p-6 space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50 p-4">
-            <Clock className="mt-0.5 h-5 w-5 shrink-0 text-purple-600" />
-            <div>
-              <p className="text-sm font-bold text-purple-800">Document under review</p>
-              <p className="text-sm text-purple-700">
-                Your document{reg.documentFileName ? ` (${reg.documentFileName})` : ""} has been submitted and is being reviewed by OMSWD staff. You will be notified once a decision is made.
-              </p>
+          <Alert variant="info">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <AlertTitle>Document under review</AlertTitle>
+                <AlertDescription>
+                  Your document{reg.documentFileName ? ` (${reg.documentFileName})` : ""} has been submitted and is being reviewed by OMSWD staff. You will be notified once a decision is made.
+                </AlertDescription>
+              </div>
             </div>
-          </div>
+          </Alert>
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">Document submitted</p>
@@ -580,27 +586,25 @@ export function ResidentSectorRegistrationPage() {
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">
                 Document / ID type <span className="text-red-500">*</span>
               </label>
-              <select
+              <Select
                 value={selectedIdType || reg.sectorIdType || ""}
                 onChange={(e) => setSelectedIdType(e.target.value)}
-                className="w-full rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-accent)]"
               >
                 <option value="">Select ID/document type...</option>
                 {meta.idTypes.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">
                 ID / Certificate number (optional)
               </label>
-              <input
+              <Input
                 type="text"
                 value={idNumber || reg.sectorIdNumber || ""}
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="e.g. PWD-2024-00123"
-                className="w-full rounded-lg border border-[var(--portal-outline)] bg-white px-3 py-2 text-sm text-[var(--portal-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--portal-accent)]"
               />
             </div>
           </div>

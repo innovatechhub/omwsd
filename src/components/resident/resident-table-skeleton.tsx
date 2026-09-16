@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ export function ResidentTableSkeleton({
             <TableRow>
               {Array.from({ length: columns }).map((_, columnIndex) => (
                 <TableHead key={`header-${columnIndex}`}>
-                  <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-[rgba(214,222,234,0.9)]" />
+                  <Skeleton className="h-2.5 w-2/3 rounded-full" />
                 </TableHead>
               ))}
             </TableRow>
@@ -40,11 +41,8 @@ export function ResidentTableSkeleton({
               <TableRow key={`row-${rowIndex}`}>
                 {Array.from({ length: columns }).map((_, columnIndex) => (
                   <TableCell key={`cell-${rowIndex}-${columnIndex}`}>
-                    <div
-                      className={cn(
-                        "h-3 animate-pulse rounded-full bg-[rgba(214,222,234,0.8)]",
-                        widths[(rowIndex + columnIndex) % widths.length],
-                      )}
+                    <Skeleton
+                      className={cn("h-3 rounded-full", widths[(rowIndex + columnIndex) % widths.length])}
                     />
                   </TableCell>
                 ))}
