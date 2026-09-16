@@ -971,13 +971,13 @@ export function SettingsPage({ mode = "admin" }: SettingsPageProps) {
           onClose={() => setProgramEditorOpen(false)}
           title={editingProgram ? "Edit program" : "Add program"}
           description="Program details and required attachments are shown to residents during application submission."
-          size="xl"
+          size="2xl"
           footer={
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-lg text-xs leading-relaxed text-muted-foreground">
                 Changes update the active resident application workflow.
               </p>
-              <div className="flex gap-2">
+              <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setProgramEditorOpen(false)}>
                   Cancel
                 </Button>
@@ -1030,7 +1030,7 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 function AuditActionBadge({ action }: { action: string }) {
   const def = ACTION_LABELS[action] ?? { label: action, color: "bg-slate-50 text-slate-600 border-slate-200" };
   return (
-    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${def.color}`}>
+    <span className={`inline-block rounded-md border px-2.5 py-0.5 text-xs font-semibold ${def.color}`}>
       {def.label}
     </span>
   );
@@ -1090,7 +1090,7 @@ function ProgramStatusBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
       className={[
-        "inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em]",
+        "inline-flex rounded-md border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em]",
         isActive
           ? "border-blue-200 bg-blue-50 text-blue-700"
           : "border-slate-200 bg-slate-50 text-slate-600",
@@ -1165,7 +1165,7 @@ function ProgramEditorFields({
         </div>
       </div>
 
-      <label className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-4 py-3">
+      <label className="flex items-center justify-between gap-4 border-y bg-muted/20 px-1 py-3 sm:px-3">
         <span>
           <span className="block text-sm font-semibold">Program visibility</span>
           <span className="block text-xs text-muted-foreground">
@@ -1176,17 +1176,17 @@ function ProgramEditorFields({
           type="checkbox"
           checked={form.isActive}
           onChange={(event) => onChange("isActive", event.target.checked)}
-          className="h-5 w-5"
+          className="h-5 w-5 accent-primary"
         />
       </label>
 
-      <div className="space-y-3 rounded-lg border p-4">
+      <section className="space-y-4 border-t pt-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Requirements
+            <h3 className="text-lg font-semibold">Required attachments</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Define the documents residents must provide for this program.
             </p>
-            <h3 className="mt-1 text-lg font-semibold">Required attachments</h3>
           </div>
           <Button type="button" onClick={onAddRequirement}>
             <PlusCircle className="h-4 w-4" />
@@ -1194,17 +1194,25 @@ function ProgramEditorFields({
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-lg border bg-background">
-          <div className="hidden grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground md:grid">
-            <span className="col-span-3">Document</span>
-            <span className="col-span-2">Type</span>
-            <span className="col-span-4">Description</span>
-            <span className="col-span-1 text-center">Required</span>
-            <span className="col-span-2 text-right">Action</span>
-          </div>
+        <div className="divide-y rounded-lg border bg-background">
           {form.requirements.map((requirement, index) => (
-            <div key={index} className="grid gap-3 border-b p-4 last:border-b-0 md:grid-cols-12 md:items-start">
-              <div className="md:col-span-3">
+            <div key={index} className="p-4 sm:p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-foreground">Requirement {index + 1}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={form.requirements.length === 1}
+                  onClick={() => onRemoveRequirement(index)}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
+              <div className="lg:col-span-4">
                 <FieldGroup label="Document label" htmlFor={`requirement-${index}-name`}>
                   <Input
                     id={`requirement-${index}-name`}
@@ -1216,7 +1224,7 @@ function ProgramEditorFields({
                   />
                 </FieldGroup>
               </div>
-              <div className="md:col-span-2">
+              <div className="lg:col-span-3">
                 <FieldGroup label="Document type" htmlFor={`requirement-${index}-type`}>
                   <Input
                     id={`requirement-${index}-type`}
@@ -1228,7 +1236,7 @@ function ProgramEditorFields({
                   />
                 </FieldGroup>
               </div>
-                <div className="space-y-2 md:col-span-4">
+                <div className="space-y-2 lg:col-span-5">
                   <label
                     className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
                     htmlFor={`requirement-${index}-description`}
@@ -1242,36 +1250,25 @@ function ProgramEditorFields({
                       onRequirementChange(index, { description: event.target.value || null })
                     }
                     placeholder="Reviewer note or resident-facing detail."
-                    className="min-h-[64px]"
+                    className="min-h-[72px]"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-sm font-medium md:col-span-1 md:justify-center md:pt-8">
+                <label className="flex items-center gap-2 text-sm font-medium lg:col-span-12">
                   <input
                     type="checkbox"
                     checked={requirement.isRequired}
                     onChange={(event) =>
                       onRequirementChange(index, { isRequired: event.target.checked })
                     }
-                    className="h-4 w-4"
+                    className="h-4 w-4 accent-primary"
                   />
                   Required
                 </label>
-                <div className="flex items-center justify-end gap-3 md:col-span-2 md:pt-7">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={form.requirements.length === 1}
-                    onClick={() => onRemoveRequirement(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Remove
-                  </Button>
-                </div>
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

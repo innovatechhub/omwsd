@@ -17,13 +17,14 @@ interface ModalProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "md" | "lg" | "xl";
+  size?: "md" | "lg" | "xl" | "2xl";
 }
 
 const sizeClassMap: Record<NonNullable<ModalProps["size"]>, string> = {
   md: "max-w-lg",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
+  "2xl": "max-w-6xl",
 };
 
 export function Modal({
@@ -40,11 +41,11 @@ export function Modal({
       <DialogContent
         hideClose
         className={cn(
-          "flex max-h-[calc(100vh-3rem)] w-full flex-col gap-0 overflow-hidden p-0",
+          "flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100vh-3rem)] sm:w-full",
           sizeClassMap[size],
         )}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-6">
           <div>
             <DialogTitle className="text-lg font-semibold text-foreground">{title}</DialogTitle>
             {description ? (
@@ -60,8 +61,8 @@ export function Modal({
             <X className="h-4 w-4" />
           </DialogClose>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">{children}</div>
-        {footer ? <footer className="border-t border-border px-5 py-4 sm:px-6">{footer}</footer> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">{children}</div>
+        {footer ? <footer className="shrink-0 border-t border-border bg-muted/20 px-4 py-3 sm:px-6">{footer}</footer> : null}
       </DialogContent>
     </Dialog>
   );

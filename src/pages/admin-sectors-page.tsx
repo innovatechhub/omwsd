@@ -577,7 +577,12 @@ function ReviewModal({ reg, onClose, onDone }: {
   }
 
   return (
-    <Modal open onClose={onClose} title={`Review: ${reg.sectorTypeLabel}`}>
+    <Modal
+      open
+      onClose={onClose}
+      title={`Review: ${reg.sectorTypeLabel}`}
+      description="Review the resident record, submitted document, and appointment status before deciding."
+    >
       <div className="space-y-5 text-sm">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--portal-outline)] pb-4">
@@ -750,7 +755,12 @@ function AddSlotModal({ onClose, onDone }: { onClose: () => void; onDone: () => 
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <Modal open onClose={onClose} title="New appointment slot">
+    <Modal
+      open
+      onClose={onClose}
+      title="New appointment slot"
+      description="Set the schedule, eligible sector, and maximum number of residents."
+    >
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
