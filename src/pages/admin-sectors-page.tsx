@@ -30,6 +30,7 @@ import { SectorStatusBadge } from "@/components/sector/sector-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { FileViewerModal } from "@/components/ui/file-viewer-modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AdminAppointmentRecord, AdminSectorRegistrationRecord, AppointmentSlot, SectorType } from "@/types/sector";
 
@@ -533,6 +534,7 @@ function ReviewModal({ reg, onClose, onDone }: {
   const [remarks, setRemarks] = useState(reg.adminRemarks ?? "");
   const [saving, setSaving] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(false);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
   const isLocked = reg.status === "verified";
   const isPendingReview = reg.status === "pending_review";
@@ -568,7 +570,7 @@ function ReviewModal({ reg, onClose, onDone }: {
     setViewingDoc(true);
     try {
       const url = await getSectorDocumentUrl(reg.documentFilePath);
-      window.open(url, "_blank");
+      setDocumentUrl(url);
     } catch (err) {
       toast.error("Unable to load document.");
     } finally {
@@ -577,6 +579,7 @@ function ReviewModal({ reg, onClose, onDone }: {
   }
 
   return (
+    <>
     <Modal
       open
       onClose={onClose}
@@ -701,6 +704,13 @@ function ReviewModal({ reg, onClose, onDone }: {
         </div>
       </div>
     </Modal>
+    <FileViewerModal
+      open={documentUrl !== null}
+      url={documentUrl}
+      title={reg.documentFileName ?? `${reg.sectorTypeLabel} document`}
+      onClose={() => setDocumentUrl(null)}
+    />
+    </>
   );
 }
 

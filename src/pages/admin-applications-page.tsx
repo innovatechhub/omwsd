@@ -680,14 +680,28 @@ export function AdminApplicationsPage() {
                           <TableHead className="text-right">Review action</TableHead>
                         </tr>
                       </TableHeader>
-                      <TableBody>
-                        {caseDetailsQuery.data.requirements.map((req) => (
+                      {Object.entries(
+                        caseDetailsQuery.data.requirements.reduce<Record<string, typeof caseDetailsQuery.data.requirements>>((groups, requirement) => {
+                          (groups[requirement.name] ??= []).push(requirement);
+                          return groups;
+                        }, {}),
+                      ).map(([groupName, requirements]) => (
+                      <TableBody key={groupName}>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={4} className="py-2 font-semibold">
+                            {groupName}
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              {requirements.length} document{requirements.length === 1 ? "" : "s"}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                        {requirements.map((req) => (
                           <TableRow key={req.id}>
                             <TableCell className="min-w-[220px]">
-                              <p className="font-semibold">{req.name}</p>
+                              <p className="font-semibold">{req.description || "Supporting document"}</p>
                               <p className="mt-0.5 text-xs text-muted-foreground">
                                 {req.isRequired ? "Required" : "Optional"}
-                                {(req.remarks ?? req.description) ? ` · ${req.remarks ?? req.description}` : ""}
+                                {req.remarks ? ` · ${req.remarks}` : ""}
                               </p>
                             </TableCell>
                             <TableCell>
@@ -714,6 +728,7 @@ export function AdminApplicationsPage() {
                           </TableRow>
                         ))}
                       </TableBody>
+                      ))}
                     </Table>
                   </div>
                 ) : (

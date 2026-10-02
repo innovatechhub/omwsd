@@ -324,7 +324,21 @@ export function ResidentApplicationPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {application.requirements.length > 0 ? (
-                    application.requirements.map((requirement) => {
+                    Object.entries(
+                      application.requirements.reduce<Record<string, typeof application.requirements>>((groups, requirement) => {
+                        (groups[requirement.name] ??= []).push(requirement);
+                        return groups;
+                      }, {}),
+                    ).map(([groupName, requirements]) => (
+                      <section key={groupName} className="overflow-hidden rounded-lg border border-[var(--portal-outline)] bg-white">
+                        <div className="flex items-center justify-between gap-3 bg-[var(--portal-surface-soft)] px-4 py-3">
+                          <h4 className="font-semibold text-[var(--portal-ink)]">{groupName}</h4>
+                          <span className="text-xs font-medium text-[var(--portal-muted)]">
+                            {requirements.length} document{requirements.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        <div className="divide-y divide-[var(--portal-outline)]">
+                        {requirements.map((requirement) => {
                       const needsResubmit =
                         requirement.status === "rejected" ||
                         requirement.status === "needs_resubmission";
@@ -338,18 +352,17 @@ export function ResidentApplicationPage() {
                         <div
                           key={requirement.id}
                           className={[
-                            "rounded-lg border p-4",
+                            "p-4",
                             needsResubmit
-                              ? "border-yellow-300 bg-yellow-50"
-                              : "border-[var(--portal-outline)] bg-white",
+                              ? "bg-yellow-50"
+                              : "bg-white",
                           ].join(" ")}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="space-y-1">
-                              <p className="font-medium text-[var(--portal-ink)]">{requirement.name}</p>
-                              {requirement.description && (
-                                <p className="text-xs text-[var(--portal-muted)]">{requirement.description}</p>
-                              )}
+                              <p className="font-medium text-[var(--portal-ink)]">
+                                {requirement.description || requirement.documentType || "Supporting document"}
+                              </p>
                               {daysInfo !== null && (
                                 <p className="text-xs text-[var(--portal-muted)]">
                                   Reviewed {daysInfo} day{daysInfo === 1 ? "" : "s"} ago
@@ -408,7 +421,10 @@ export function ResidentApplicationPage() {
                           )}
                         </div>
                       );
-                    })
+                        })}
+                        </div>
+                      </section>
+                    ))
                   ) : (
                     <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
                       No explicit requirement records are linked yet.
