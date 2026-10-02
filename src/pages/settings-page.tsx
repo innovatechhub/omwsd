@@ -1194,55 +1194,46 @@ function ProgramEditorFields({
           </Button>
         </div>
 
-        <div className="divide-y rounded-lg border bg-background">
-          {form.requirements.map((requirement, index) => (
-            <div key={index} className="p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-foreground">Requirement {index + 1}</p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={form.requirements.length === 1}
-                  onClick={() => onRemoveRequirement(index)}
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Remove
-                </Button>
-              </div>
-              <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
-              <div className="lg:col-span-4">
-                <FieldGroup label="Document label" htmlFor={`requirement-${index}-name`}>
-                  <Input
+        <div className="overflow-x-auto rounded-lg border bg-background">
+          <table className="w-full min-w-[920px] border-collapse text-sm">
+            <thead className="bg-muted/50 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <tr>
+                <th className="w-12 px-4 py-3 text-center">#</th>
+                <th className="w-[25%] px-3 py-3">Document label</th>
+                <th className="w-[20%] px-3 py-3">Document type</th>
+                <th className="px-3 py-3">Description</th>
+                <th className="w-24 px-3 py-3 text-center">Required</th>
+                <th className="w-16 px-3 py-3"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {form.requirements.map((requirement, index) => (
+                <tr key={index} className="align-top transition-colors hover:bg-muted/20">
+                  <td className="px-4 py-4 text-center font-semibold tabular-nums text-muted-foreground">{index + 1}</td>
+                  <td className="px-3 py-4">
+                    <label className="sr-only" htmlFor={`requirement-${index}-name`}>Document label</label>
+                    <Input
                     id={`requirement-${index}-name`}
                     value={requirement.name}
                     onChange={(event) =>
                       onRequirementChange(index, { name: event.target.value })
                     }
                     placeholder="e.g. Medical abstract"
-                  />
-                </FieldGroup>
-              </div>
-              <div className="lg:col-span-3">
-                <FieldGroup label="Document type" htmlFor={`requirement-${index}-type`}>
-                  <Input
+                    />
+                  </td>
+                  <td className="px-3 py-4">
+                    <label className="sr-only" htmlFor={`requirement-${index}-type`}>Document type</label>
+                    <Input
                     id={`requirement-${index}-type`}
                     value={requirement.documentType ?? ""}
                     onChange={(event) =>
                       onRequirementChange(index, { documentType: event.target.value || null })
                     }
                     placeholder="e.g. medical_certificate"
-                  />
-                </FieldGroup>
-              </div>
-                <div className="space-y-2 lg:col-span-5">
-                  <label
-                    className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
-                    htmlFor={`requirement-${index}-description`}
-                  >
-                    Description
-                  </label>
+                    />
+                  </td>
+                  <td className="px-3 py-4">
+                    <label className="sr-only" htmlFor={`requirement-${index}-description`}>Description</label>
                   <Textarea
                     id={`requirement-${index}-description`}
                     value={requirement.description ?? ""}
@@ -1250,23 +1241,39 @@ function ProgramEditorFields({
                       onRequirementChange(index, { description: event.target.value || null })
                     }
                     placeholder="Reviewer note or resident-facing detail."
-                    className="min-h-[72px]"
+                    className="min-h-[64px] resize-y"
                   />
-                </div>
-                <label className="flex items-center gap-2 text-sm font-medium lg:col-span-12">
+                  </td>
+                  <td className="px-3 py-5 text-center">
+                    <label className="inline-flex cursor-pointer items-center justify-center">
+                      <span className="sr-only">Requirement {index + 1} is required</span>
                   <input
                     type="checkbox"
                     checked={requirement.isRequired}
                     onChange={(event) =>
                       onRequirementChange(index, { isRequired: event.target.checked })
                     }
-                    className="h-4 w-4 accent-primary"
+                        className="h-4 w-4 accent-primary"
                   />
-                  Required
-                </label>
-              </div>
-            </div>
-          ))}
+                    </label>
+                  </td>
+                  <td className="px-3 py-4 text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={form.requirements.length === 1}
+                      onClick={() => onRemoveRequirement(index)}
+                      className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={`Remove requirement ${index + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </div>
