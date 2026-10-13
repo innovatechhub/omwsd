@@ -17,17 +17,21 @@ import { toast } from "sonner";
 
 import { ResidentPageHeader } from "@/components/resident/resident-page-header";
 import { ResidentRequestAssistanceForm } from "@/components/resident/resident-request-assistance-form";
+import { ResidentRequirementChecklist } from "@/components/resident/resident-requirement-checklist";
 import { ResidentStateCard } from "@/components/resident/resident-state-card";
 import { ResidentTableSkeleton } from "@/components/resident/resident-table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { FileViewerModal } from "@/components/ui/file-viewer-modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/use-auth";
 import { useResidentPortal } from "@/hooks/use-resident-portal";
 import { queryKeys } from "@/lib/query-keys";
 import { cancelResidentApplication, deleteResidentApplication } from "@/services/application-service";
+import { createSignedFileUrl } from "@/services/storage-service";
+import type { ResidentUploadedDocument } from "@/types/resident";
 
 type ConfirmAction = "cancel" | "delete";
 
@@ -46,6 +50,20 @@ export function ResidentApplicationPage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [isActioning, setIsActioning] = useState(false);
+  const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; document: ResidentUploadedDocument } | null>(null);
+
+  async function handleViewDocument(document: ResidentUploadedDocument) {
+    setViewingDocumentId(document.id);
+    try {
+      const url = await createSignedFileUrl(document.bucket, document.filePath);
+      setPreview({ url, document });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load document. Please try again.");
+    } finally {
+      setViewingDocumentId(null);
+    }
+  }
 
   async function handleConfirmAction() {
     if (!application || !confirmAction) return;
@@ -322,114 +340,16 @@ export function ResidentApplicationPage() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {application.requirements.length > 0 ? (
-                    Object.entries(
-                      application.requirements.reduce<Record<string, typeof application.requirements>>((groups, requirement) => {
-                        (groups[requirement.name] ??= []).push(requirement);
-                        return groups;
-                      }, {}),
-                    ).map(([groupName, requirements]) => (
-                      <section key={groupName} className="overflow-hidden rounded-lg border border-[var(--portal-outline)] bg-white">
-                        <div className="flex items-center justify-between gap-3 bg-[var(--portal-surface-soft)] px-4 py-3">
-                          <h4 className="font-semibold text-[var(--portal-ink)]">{groupName}</h4>
-                          <span className="text-xs font-medium text-[var(--portal-muted)]">
-                            {requirements.length} document{requirements.length === 1 ? "" : "s"}
-                          </span>
-                        </div>
-                        <div className="divide-y divide-[var(--portal-outline)]">
-                        {requirements.map((requirement) => {
-                      const needsResubmit =
-                        requirement.status === "rejected" ||
-                        requirement.status === "needs_resubmission";
-                      const daysInfo = requirement.reviewedAt
-                        ? Math.floor(
-                            (Date.now() - new Date(requirement.reviewedAt).getTime()) / 86_400_000,
-                          )
-                        : null;
-
-                      return (
-                        <div
-                          key={requirement.id}
-                          className={[
-                            "p-4",
-                            needsResubmit
-                              ? "bg-yellow-50"
-                              : "bg-white",
-                          ].join(" ")}
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="font-medium text-[var(--portal-ink)]">
-                                {requirement.description || requirement.documentType || "Supporting document"}
-                              </p>
-                              {daysInfo !== null && (
-                                <p className="text-xs text-[var(--portal-muted)]">
-                                  Reviewed {daysInfo} day{daysInfo === 1 ? "" : "s"} ago
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge
-                                variant={
-                                  requirement.status === "approved"
-                                    ? "secondary"
-                                    : requirement.status === "submitted"
-                                      ? "default"
-                                      : "outline"
-                                }
-                              >
-                                {requirement.statusLabel}
-                              </Badge>
-                              {needsResubmit && (
-                                <Button
-                                  size="sm"
-                                  className="bg-[var(--portal-accent)] text-white hover:bg-[var(--portal-accent-strong)]"
-                                  onClick={() => {
-                                    setIsDetailsModalOpen(false);
-                                    navigate(`/resident/uploads?requirement=${requirement.id}`);
-                                  }}
-                                >
-                                  <Upload className="h-3 w-3" />
-                                  Resubmit
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          {requirement.remarks && (
-                            <p className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                              Staff note: {requirement.remarks}
-                            </p>
-                          )}
-                          {requirement.documents.length > 0 && (
-                            <div className="mt-3 space-y-1">
-                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--portal-muted)]">
-                                Linked files ({requirement.documents.length})
-                              </p>
-                              {requirement.documents.map((doc) => (
-                                <div
-                                  key={doc.id}
-                                  className="flex items-center justify-between gap-3 rounded-md border border-[var(--portal-outline)] bg-[var(--portal-surface-soft)] px-3 py-1.5 text-sm"
-                                >
-                                  <span className="truncate text-[var(--portal-ink)]">{doc.fileName}</span>
-                                  <Badge variant="outline" className="shrink-0 text-xs">
-                                    {doc.statusLabel}
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                        })}
-                        </div>
-                      </section>
-                    ))
-                  ) : (
-                    <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-                      No explicit requirement records are linked yet.
-                    </div>
-                  )}
+                <CardContent>
+                  <ResidentRequirementChecklist
+                    requirements={application.requirements}
+                    viewingDocumentId={viewingDocumentId}
+                    onViewDocument={(document) => void handleViewDocument(document)}
+                    onResubmit={(requirementId) => {
+                      setIsDetailsModalOpen(false);
+                      navigate(`/resident/uploads?requirement=${requirementId}`);
+                    }}
+                  />
                 </CardContent>
               </Card>
             ) : null}
@@ -510,6 +430,14 @@ export function ResidentApplicationPage() {
           </div>
         )}
       </Modal>
+
+      <FileViewerModal
+        open={preview !== null}
+        url={preview?.url ?? null}
+        title={preview?.document.fileName ?? "Document"}
+        mimeType={preview?.document.mimeType}
+        onClose={() => setPreview(null)}
+      />
 
       <Modal
         open={confirmAction !== null}

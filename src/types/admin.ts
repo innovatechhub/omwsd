@@ -4,6 +4,10 @@ export interface AdminApplicationRecord {
   id: string;
   reference: string;
   resident: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  suffix: string | null;
   assistance: string;
   status: "Pending" | "For correction" | "For interview" | "Approved";
   barangay: string;

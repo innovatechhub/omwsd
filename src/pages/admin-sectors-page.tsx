@@ -618,6 +618,7 @@ function ReviewModal({ reg, onClose, onDone }: {
                 variant="outline"
                 onClick={() => void handleViewDocument()}
                 disabled={viewingDoc}
+                aria-label={`View ${reg.documentFileName ?? "submitted document"}`}
                 className="border-[var(--portal-outline)]"
               >
                 {viewingDoc ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}

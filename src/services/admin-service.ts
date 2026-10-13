@@ -342,7 +342,7 @@ export async function getAdminApplications() {
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id, reference_number, applicant_full_name, applicant_barangay, applicant_municipality, applicant_profile_id, urgency, submitted_at, admin_remarks, request_reason, status, birth_date, sex, civil_status, contact_number, address_line, household_size, monthly_income, educational_attainment, occupation, relationship_to_beneficiary, family_composition, assistance_types(name)",
+      "id, reference_number, applicant_full_name, applicant_barangay, applicant_municipality, applicant_profile_id, urgency, submitted_at, admin_remarks, request_reason, status, birth_date, sex, civil_status, contact_number, address_line, household_size, monthly_income, educational_attainment, occupation, relationship_to_beneficiary, family_composition, assistance_types(name), residents!applications_resident_id_fkey(first_name, middle_name, last_name, suffix)",
     )
     .order("submitted_at", { ascending: false });
 
@@ -352,11 +352,16 @@ export async function getAdminApplications() {
 
   return ((data ?? []) as Array<Record<string, unknown>>).map((item) => {
     const assistanceType = item.assistance_types as Record<string, unknown> | null;
+    const resident = item.residents as Record<string, unknown> | null;
 
     return {
       id: String(item.id ?? ""),
       reference: String(item.reference_number ?? ""),
       resident: String(item.applicant_full_name ?? "Unnamed resident"),
+      firstName: typeof resident?.first_name === "string" ? resident.first_name : null,
+      middleName: typeof resident?.middle_name === "string" ? resident.middle_name : null,
+      lastName: typeof resident?.last_name === "string" ? resident.last_name : null,
+      suffix: typeof resident?.suffix === "string" ? resident.suffix : null,
       assistance: String(assistanceType?.name ?? "Unknown assistance"),
       status: mapStatus(typeof item.status === "string" ? item.status : null),
       barangay: String(item.applicant_barangay ?? "Not specified"),

@@ -15,13 +15,18 @@ function computeAge(birthDate: string | null): string {
   return String(age);
 }
 
-function cell(value: string | null | undefined, width = "auto"): string {
-  const v = value ?? "";
-  return `<td style="border:1px solid #000;padding:3px 5px;width:${width};font-size:10px;">${v}</td>`;
+function escapeHtml(value: string | null | undefined): string {
+  return (value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[character]!);
+}
+
+function cell(value: string | null | undefined, colspan = 1): string {
+  return `<td colspan="${colspan}">${escapeHtml(value)}</td>`;
 }
 
 function labeledField(label: string, value: string | null | undefined, colspan = 1): string {
-  const v = value ?? "";
+  const v = escapeHtml(value);
   return `<td colspan="${colspan}" style="border:1px solid #000;padding:3px 5px;font-size:10px;">
     <span style="font-size:8px;color:#555;">${label}</span><br/><strong>${v}</strong>
   </td>`;
@@ -34,12 +39,12 @@ function familyCompositionRows(application: AdminApplicationRecord): string {
   return [
     ...rows.map((member) => `
       <tr>
-        <td style="border:1px solid #000;padding:3px 5px;height:20px;">${member.name}</td>
-        <td style="border:1px solid #000;padding:3px 5px;">${member.educationalAttainment}</td>
-        <td style="border:1px solid #000;padding:3px 5px;">${member.age}</td>
-        <td style="border:1px solid #000;padding:3px 5px;">${member.relationship}</td>
-        <td style="border:1px solid #000;padding:3px 5px;">${member.occupation}</td>
-        <td style="border:1px solid #000;padding:3px 5px;">${member.monthlyIncome}</td>
+        <td style="height:20px;">${escapeHtml(member.name)}</td>
+        ${cell(member.educationalAttainment)}
+        ${cell(member.age)}
+        ${cell(member.relationship)}
+        ${cell(member.occupation)}
+        ${cell(member.monthlyIncome)}
       </tr>`),
     ...Array.from({ length: blankRows }, () => `
       <tr>
@@ -53,7 +58,7 @@ function familyCompositionRows(application: AdminApplicationRecord): string {
   ].join("");
 }
 
-export function printIntakeSheet(application: AdminApplicationRecord): void {
+export function buildIntakeSheetHtml(application: AdminApplicationRecord): string {
   const age = computeAge(application.birthDate);
   const dob = formatBirthDate(application.birthDate);
   const income = application.monthlyIncome != null
@@ -62,18 +67,16 @@ export function printIntakeSheet(application: AdminApplicationRecord): void {
   const address = [application.addressLine, application.barangay, application.municipality]
     .filter(Boolean).join(", ");
 
-  // Split full name into parts (best effort: Last, First Middle)
-  const nameParts = application.resident.split(",");
-  const lastName = (nameParts[0] ?? "").trim();
-  const firstMiddle = (nameParts[1] ?? application.resident).trim().split(" ");
-  const firstName = firstMiddle[0] ?? "";
-  const middleName = firstMiddle.slice(1).join(" ");
+  // Use saved name components; display names cannot reliably distinguish
+  // compound given names, middle names, surnames, or suffixes.
+  const columns = `<colgroup>${"<col/>".repeat(12)}</colgroup>`;
+  const reference = escapeHtml(application.reference);
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>OMSWD General Intake Sheet – ${application.reference}</title>
+  <title>OMSWD General Intake Sheet – ${reference}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; background: #fff; }
@@ -86,8 +89,11 @@ export function printIntakeSheet(application: AdminApplicationRecord): void {
     .header { text-align: center; margin-bottom: 8px; }
     .header table { width: 100%; border-collapse: collapse; }
     .section-title { font-weight: bold; font-size: 11px; background: #eee; padding: 3px 5px; border: 1px solid #000; margin-top: 6px; }
-    table.form-table { width: 100%; border-collapse: collapse; }
-    table.form-table td { border: 1px solid #000; padding: 3px 5px; font-size: 10px; vertical-align: top; }
+    table.form-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.form-table td { border: 1px solid #000; padding: 3px 5px; font-size: 10px; vertical-align: top; overflow-wrap: anywhere; }
+    .name-labels td { padding: 1px 5px !important; font-size: 8px !important; text-align: center; }
+    tr { break-inside: avoid; }
+    .section-title { break-after: avoid; }
     .blank { min-height: 16px; display: block; }
     .signatures { margin-top: 24px; display: flex; justify-content: space-between; }
     .sig-block { width: 46%; }
@@ -121,81 +127,83 @@ export function printIntakeSheet(application: AdminApplicationRecord): void {
       <table style="width:100%;border-collapse:collapse;margin-top:4px;">
         <tr>
           <td style="border:none;font-size:10px;">Date: ___________________</td>
-          <td style="border:none;text-align:right;font-size:10px;">Ref #: <strong>${application.reference}</strong></td>
+          <td style="border:none;text-align:right;font-size:10px;">Ref #: <strong>${reference}</strong></td>
         </tr>
       </table>
     </div>
 
     <div class="section-title">Client's Identifying Information</div>
     <table class="form-table">
+      ${columns}
       <tr>
-        <td colspan="6" style="padding:2px 5px;font-size:8px;font-weight:bold;">Client's Name:</td>
+        <td colspan="12" style="padding:2px 5px;font-size:8px;font-weight:bold;">Client's Name: ${escapeHtml(application.resident)}</td>
       </tr>
       <tr>
-        ${cell(lastName, "30%")}
-        ${cell(firstName, "30%")}
-        ${cell(middleName, "25%")}
-        ${cell("", "15%")}
+        ${cell(application.lastName, 4)}
+        ${cell(application.firstName, 4)}
+        ${cell(application.middleName, 3)}
+        ${cell(application.suffix, 1)}
+      </tr>
+      <tr class="name-labels">
+        ${cell("Last Name", 4)}
+        ${cell("First Name", 4)}
+        ${cell("Middle Name", 3)}
+        ${cell("Extension Name", 1)}
       </tr>
       <tr>
-        <td colspan="1" style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">Last Name</td>
-        <td colspan="1" style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">First Name</td>
-        <td colspan="1" style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">Middle Name</td>
-        <td colspan="1" style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">Extension Name</td>
+        ${labeledField("Age", age, 2)}
+        ${labeledField("Sex", application.sex ?? "", 2)}
+        ${labeledField("Date of Birth", dob, 5)}
+        ${labeledField("Civil Status", application.civilStatus ?? "", 3)}
       </tr>
       <tr>
-        ${labeledField("Age", age, 1)}
-        ${labeledField("Sex", application.sex ?? "", 1)}
-        ${labeledField("Date of Birth", dob, 2)}
-        ${labeledField("Civil Status", application.civilStatus ?? "", 1)}
+        ${labeledField("Contact Number", application.contactNumber, 6)}
+        ${labeledField("Relationship to the Beneficiaries", application.relationshipToBeneficiary ?? "", 6)}
       </tr>
       <tr>
-        ${labeledField("Contact Number", application.contactNumber, 2)}
-        ${labeledField("Relationship to the Beneficiaries", application.relationshipToBeneficiary ?? "", 2)}
+        ${labeledField("Educational Attainment", application.educationalAttainment ?? "", 6)}
+        ${labeledField("Est. Monthly Salary", income, 6)}
       </tr>
       <tr>
-        ${labeledField("Educational Attainment", application.educationalAttainment ?? "", 2)}
-        ${labeledField("Est. Monthly Salary", income, 2)}
-      </tr>
-      <tr>
-        ${labeledField("Address", address, 3)}
-        ${labeledField("Occupation", application.occupation ?? "", 1)}
+        ${labeledField("Address", address, 9)}
+        ${labeledField("Occupation", application.occupation ?? "", 3)}
       </tr>
     </table>
 
     <div class="section-title">Beneficiary's Identifying Information</div>
     <table class="form-table">
+      ${columns}
       <tr>
-        <td colspan="4" style="padding:2px 5px;font-size:8px;font-weight:bold;">Name:</td>
+        <td colspan="12" style="padding:2px 5px;font-size:8px;font-weight:bold;">Name:</td>
       </tr>
       <tr>
-        ${cell("", "30%")}
-        ${cell("", "30%")}
-        ${cell("", "25%")}
-        ${cell("", "15%")}
+        ${cell("", 4)}
+        ${cell("", 4)}
+        ${cell("", 3)}
+        ${cell("", 1)}
+      </tr>
+      <tr class="name-labels">
+        ${cell("Last Name", 4)}
+        ${cell("First Name", 4)}
+        ${cell("Middle Name", 3)}
+        ${cell("Extension Name", 1)}
       </tr>
       <tr>
-        <td style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">Last Name</td>
-        <td style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">First Name</td>
-        <td style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">Middle Name</td>
-        <td style="border:1px solid #000;padding:1px 5px;font-size:8px;text-align:center;">Extension Name</td>
+        ${labeledField("Age", "", 2)}
+        ${labeledField("Sex", "", 2)}
+        ${labeledField("Date of Birth", "", 5)}
+        ${labeledField("Civil Status", "", 3)}
       </tr>
       <tr>
-        ${labeledField("Age", "", 1)}
-        ${labeledField("Sex", "", 1)}
-        ${labeledField("Date of Birth", "", 2)}
-        ${labeledField("Civil Status", "", 1)}
+        ${labeledField("Contact Number", "", 6)}
+        ${labeledField("Educational Attainment", "", 6)}
       </tr>
       <tr>
-        ${labeledField("Contact Number", "", 2)}
-        ${labeledField("Educational Attainment", "", 2)}
+        ${labeledField("Address", "", 9)}
+        ${labeledField("Est. Monthly Salary", "", 3)}
       </tr>
       <tr>
-        ${labeledField("Address", "", 3)}
-        ${labeledField("Est. Monthly Salary", "", 1)}
-      </tr>
-      <tr>
-        ${labeledField("Occupation", "", 4)}
+        ${labeledField("Occupation", "", 12)}
       </tr>
     </table>
 
@@ -231,12 +239,15 @@ export function printIntakeSheet(application: AdminApplicationRecord): void {
     </div>
 
     <div style="margin-top:10px;font-size:8px;color:#888;text-align:center;">
-      Generated by OMSWD Portal &nbsp;·&nbsp; Ref: ${application.reference} &nbsp;·&nbsp; ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
+      Generated by OMSWD Portal &nbsp;·&nbsp; Ref: ${reference} &nbsp;·&nbsp; ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
     </div>
   </div>
 </body>
 </html>`;
+}
 
+export function printIntakeSheet(application: AdminApplicationRecord): void {
+  const html = buildIntakeSheetHtml(application);
   const win = window.open("", "_blank", "width=820,height=900");
   if (!win) return;
   win.opener = null;
